@@ -1,134 +1,594 @@
-import { App, Editor, MarkdownView, Modal, Notice, Plugin, PluginSettingTab, Setting } from 'obsidian';
+import {
+	App,
+	Editor,
+	EditorPosition,
+	EditorSuggest,
+	EditorSuggestContext,
+	EditorSuggestTriggerInfo,
+	MarkdownView,
+	Modal,
+	Notice,
+	Plugin,
+	PluginSettingTab,
+	Setting,
+	TFile,
+} from "obsidian";
 
-// Remember to rename these classes and interfaces!
+import * as emojiData from "@emoji-mart/data";
+import { init, SearchIndex, getEmojiDataFromNative } from "emoji-mart";
 
-interface MyPluginSettings {
-	mySetting: string;
+// Initialize emoji-mart data
+init({ data: emojiData });
+
+// Function to check if the web component is available
+function isEmojiPickerDefined(): boolean {
+	return typeof customElements.get("em-emoji-picker") !== "undefined";
 }
 
-const DEFAULT_SETTINGS: MyPluginSettings = {
-	mySetting: 'default'
+// Function to trigger an inline emoji search
+async function searchEmojis(query: string): Promise<EmojiData[]> {
+	try {
+		return await SearchIndex.search(query);
+	} catch (error) {
+		console.error("Failed to search emojis:", error);
+		return [];
+	}
 }
 
-export default class MyPlugin extends Plugin {
-	settings: MyPluginSettings;
+interface EmojiData {
+	id: string;
+	name: string;
+	native: string;
+	unified: string;
+	keywords: string[];
+	shortcodes?: string;
+}
+
+interface QuickEmojiSettings {
+	skin: 1 | 2 | 3 | 4 | 5 | 6;
+	theme: "auto" | "light" | "dark";
+	recentCount: number;
+}
+
+const DEFAULT_SETTINGS: QuickEmojiSettings = {
+	skin: 1,
+	theme: "auto",
+	recentCount: 20,
+};
+
+export default class QuickEmojiPlugin extends Plugin {
+	settings: QuickEmojiSettings;
+	recentEmojis: string[] = [];
 
 	async onload() {
 		await this.loadSettings();
 
-		// This creates an icon in the left ribbon.
-		const ribbonIconEl = this.addRibbonIcon('dice', 'Sample Plugin', (evt: MouseEvent) => {
-			// Called when the user clicks the icon.
-			new Notice('This is a notice!');
+		// Load CSS
+		this.loadStyles();
+
+		// Ensure emoji-mart is loaded - dynamically import it
+		try {
+			// This import will ensure the web component is registered
+			await import("emoji-mart");
+			console.log("Emoji-mart loaded successfully");
+		} catch (error) {
+			console.error("Failed to load emoji-mart:", error);
+		}
+
+		// Register the emoji suggester
+		this.registerEditorSuggest(new EmojiSuggester(this));
+
+		// Add settings tab
+		this.addSettingTab(new QuickEmojiSettingTab(this.app, this));
+
+		// Add ribbon icon for emoji picker
+		this.addRibbonIcon("smile", "Insert emoji", () => {
+			this.showEmojiPicker();
 		});
-		// Perform additional things with the ribbon
-		ribbonIconEl.addClass('my-plugin-ribbon-class');
 
-		// This adds a status bar item to the bottom of the app. Does not work on mobile apps.
-		const statusBarItemEl = this.addStatusBarItem();
-		statusBarItemEl.setText('Status Bar Text');
-
-		// This adds a simple command that can be triggered anywhere
+		// Add command to open emoji picker
 		this.addCommand({
-			id: 'open-sample-modal-simple',
-			name: 'Open sample modal (simple)',
+			id: "open-emoji-picker",
+			name: "Open emoji picker",
 			callback: () => {
-				new SampleModal(this.app).open();
+				this.showEmojiPicker();
+			},
+		});
+
+		// Listen for emoji-mart component load
+		window.addEventListener("emoji-mart:state:change", (e: CustomEvent) => {
+			if (e.detail?.recents?.length > 0) {
+				// Update our recent emojis from the picker
+				this.syncRecentsFromPicker(e.detail.recents);
 			}
 		});
-		// This adds an editor command that can perform some operation on the current editor instance
-		this.addCommand({
-			id: 'sample-editor-command',
-			name: 'Sample editor command',
-			editorCallback: (editor: Editor, view: MarkdownView) => {
-				console.log(editor.getSelection());
-				editor.replaceSelection('Sample Editor Command');
-			}
-		});
-		// This adds a complex command that can check whether the current state of the app allows execution of the command
-		this.addCommand({
-			id: 'open-sample-modal-complex',
-			name: 'Open sample modal (complex)',
-			checkCallback: (checking: boolean) => {
-				// Conditions to check
-				const markdownView = this.app.workspace.getActiveViewOfType(MarkdownView);
-				if (markdownView) {
-					// If checking is true, we're simply "checking" if the command can be run.
-					// If checking is false, then we want to actually perform the operation.
-					if (!checking) {
-						new SampleModal(this.app).open();
-					}
-
-					// This command will only show up in Command Palette when the check function returns true
-					return true;
-				}
-			}
-		});
-
-		// This adds a settings tab so the user can configure various aspects of the plugin
-		this.addSettingTab(new SampleSettingTab(this.app, this));
-
-		// If the plugin hooks up any global DOM events (on parts of the app that doesn't belong to this plugin)
-		// Using this function will automatically remove the event listener when this plugin is disabled.
-		this.registerDomEvent(document, 'click', (evt: MouseEvent) => {
-			console.log('click', evt);
-		});
-
-		// When registering intervals, this function will automatically clear the interval when the plugin is disabled.
-		this.registerInterval(window.setInterval(() => console.log('setInterval'), 5 * 60 * 1000));
 	}
 
 	onunload() {
-
+		// Clean up any custom event listeners
+		window.removeEventListener("emoji-mart:state:change", () => {});
 	}
 
 	async loadSettings() {
-		this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
+		this.settings = Object.assign(
+			{},
+			DEFAULT_SETTINGS,
+			await this.loadData()
+		);
+
+		// Load recent emojis from local storage
+		const recentData = localStorage.getItem("quick-emoji-recent");
+		if (recentData) {
+			try {
+				this.recentEmojis = JSON.parse(recentData);
+			} catch (e) {
+				console.error("Failed to parse recent emojis", e);
+				this.recentEmojis = [];
+			}
+		}
 	}
 
 	async saveSettings() {
 		await this.saveData(this.settings);
 	}
+
+	saveRecentEmoji(emoji: string) {
+		// Add to the beginning, remove duplicates
+		this.recentEmojis = [
+			emoji,
+			...this.recentEmojis.filter((e) => e !== emoji),
+		].slice(0, this.settings.recentCount);
+		localStorage.setItem(
+			"quick-emoji-recent",
+			JSON.stringify(this.recentEmojis)
+		);
+	}
+
+	clearRecentEmojis() {
+		this.recentEmojis = [];
+		localStorage.removeItem("quick-emoji-recent");
+	}
+
+	showEmojiPicker() {
+		new EmojiPickerModal(this).open();
+	}
+
+	loadStyles() {
+		// Add a style element to document head
+		const styleEl = document.createElement("style");
+		styleEl.id = "quick-emoji-styles";
+		document.head.appendChild(styleEl);
+
+		// Load the CSS file
+		this.loadData()
+			.then(() => {
+				return this.app.vault.adapter.read(
+					this.manifest.dir + "/styles.css"
+				);
+			})
+			.then((css) => {
+				styleEl.textContent = css;
+			})
+			.catch((error) => {
+				console.error("Failed to load Quick Emoji styles", error);
+			});
+	}
+
+	// Sync recent emojis from the picker
+	syncRecentsFromPicker(recents: { native: string }[] | string[]) {
+		if (!recents || !Array.isArray(recents)) return;
+
+		// Extract native emojis from the recents list
+		const nativeEmojis = recents
+			.map((item) => (typeof item === "string" ? item : item.native))
+			.filter((emoji) => emoji !== undefined);
+
+		// Only update if we actually have emojis
+		if (nativeEmojis.length > 0) {
+			this.recentEmojis = nativeEmojis.slice(
+				0,
+				this.settings.recentCount
+			);
+			localStorage.setItem(
+				"quick-emoji-recent",
+				JSON.stringify(this.recentEmojis)
+			);
+		}
+	}
 }
 
-class SampleModal extends Modal {
-	constructor(app: App) {
-		super(app);
+class EmojiPickerModal extends Modal {
+	plugin: QuickEmojiPlugin;
+
+	constructor(plugin: QuickEmojiPlugin) {
+		super(plugin.app);
+		this.plugin = plugin;
 	}
 
 	onOpen() {
-		const {contentEl} = this;
-		contentEl.setText('Woah!');
+		const { contentEl } = this;
+		contentEl.empty();
+		contentEl.addClass("quick-emoji-modal");
+
+		// Create emoji picker container
+		const pickerContainer = contentEl.createDiv({
+			cls: "emoji-picker-container",
+		});
+
+		try {
+			// Check if emoji picker component is defined
+			if (!isEmojiPickerDefined()) {
+				// If it's not defined, we need to add a warning message
+				pickerContainer.createEl("div", {
+					cls: "emoji-picker-error",
+					text: "Emoji picker component is not available. Please reload Obsidian and try again.",
+				});
+
+				// Create a reload button
+				const reloadButton = pickerContainer.createEl("button", {
+					cls: "emoji-picker-reload-btn",
+					text: "Reload Now",
+				});
+
+				reloadButton.addEventListener("click", () => {
+					window.location.reload();
+				});
+
+				return;
+			}
+
+			// Create the web component element
+			const pickerElement = document.createElement("em-emoji-picker");
+
+			// Set attributes based on plugin settings
+			pickerElement.setAttribute(
+				"skin",
+				this.plugin.settings.skin.toString()
+			);
+			pickerElement.setAttribute("theme", this.plugin.settings.theme);
+			pickerElement.setAttribute("categories-position", "top");
+
+			// Handle recents
+			if (this.plugin.recentEmojis.length > 0) {
+				// Format recent emojis for the picker
+				const recentsJson = JSON.stringify(
+					this.plugin.recentEmojis.map((native) => ({ native }))
+				);
+				pickerElement.setAttribute("data-recents", recentsJson);
+			}
+
+			// Listen for emoji selection
+			pickerElement.addEventListener("emoji-click", (e: CustomEvent) => {
+				const emoji = e.detail.emoji;
+				const native = emoji.native || emoji;
+
+				// Get the active editor
+				const activeView =
+					this.plugin.app.workspace.getActiveViewOfType(MarkdownView);
+				if (activeView && activeView.editor) {
+					const editor = activeView.editor;
+					editor.replaceSelection(native);
+
+					// Save as recent
+					this.plugin.saveRecentEmoji(native);
+
+					// Close the modal
+					this.close();
+				} else {
+					new Notice("No active editor found.");
+				}
+			});
+
+			// Add the picker to container
+			pickerContainer.appendChild(pickerElement);
+		} catch (error) {
+			console.error("Failed to create emoji picker:", error);
+			pickerContainer.createEl("div", {
+				cls: "emoji-picker-error",
+				text: "Failed to create emoji picker. Try reloading Obsidian.",
+			});
+		}
 	}
 
 	onClose() {
-		const {contentEl} = this;
+		const { contentEl } = this;
 		contentEl.empty();
 	}
 }
 
-class SampleSettingTab extends PluginSettingTab {
-	plugin: MyPlugin;
+class EmojiSuggester extends EditorSuggest<
+	| EmojiData
+	| { type: "header"; value: string }
+	| { type: "empty"; value: string }
+> {
+	plugin: QuickEmojiPlugin;
 
-	constructor(app: App, plugin: MyPlugin) {
+	constructor(plugin: QuickEmojiPlugin) {
+		super(plugin.app);
+		this.plugin = plugin;
+	}
+
+	onTrigger(
+		cursor: EditorPosition,
+		editor: Editor,
+		_file: TFile
+	): EditorSuggestTriggerInfo | null {
+		// Check if we're in the middle of a word
+		const line = editor.getLine(cursor.line);
+		const subString = line.substring(0, cursor.ch);
+
+		// Find the last colon before cursor
+		const colonMatch = subString.match(/:([^:\s]*)$/);
+		if (!colonMatch) {
+			return null;
+		}
+
+		// Trigger the emoji suggester
+		return {
+			start: {
+				line: cursor.line,
+				ch: colonMatch.index || 0,
+			},
+			end: cursor,
+			query: colonMatch[1] || "",
+		};
+	}
+
+	async getSuggestions(
+		context: EditorSuggestContext
+	): Promise<
+		(
+			| EmojiData
+			| { type: "header"; value: string }
+			| { type: "empty"; value: string }
+		)[]
+	> {
+		const query = context.query || "";
+
+		// If query is empty, show recent emojis first
+		if (!query) {
+			const recentSection: Array<
+				| EmojiData
+				| { type: "header"; value: string }
+				| { type: "empty"; value: string }
+			> = [];
+
+			// Add recents header if there are recent emojis
+			if (this.plugin.recentEmojis.length > 0) {
+				recentSection.push({ type: "header", value: "Recent" });
+
+				// Get emoji data for each recent emoji
+				for (const native of this.plugin.recentEmojis) {
+					try {
+						const emojiData = await getEmojiFromNative(native);
+						if (emojiData) {
+							recentSection.push(emojiData);
+						}
+					} catch (e) {
+						console.error(
+							"Failed to get emoji data for",
+							native,
+							e
+						);
+					}
+				}
+			}
+
+			// Add popular header
+			recentSection.push({ type: "header", value: "Frequently Used" });
+
+			// Get some popular emojis
+			const popularEmojis = await searchEmojis("thumbs up");
+			return [...recentSection, ...popularEmojis];
+		}
+
+		// Search for emoji matching the query
+		const results = await searchEmojis(query);
+
+		// If no results, show empty message
+		if (results.length === 0) {
+			return [{ type: "empty", value: "No emojis found" }];
+		}
+
+		return results;
+	}
+
+	renderSuggestion(
+		item:
+			| EmojiData
+			| { type: "header"; value: string }
+			| { type: "empty"; value: string },
+		el: HTMLElement
+	): void {
+		el.empty();
+
+		// For section headers
+		if ("type" in item && item.type === "header") {
+			el.addClass("suggestion-header");
+			el.setText(item.value);
+			return;
+		}
+
+		// For empty results
+		if ("type" in item && item.type === "empty") {
+			el.addClass("emoji-suggestion");
+			el.setText(item.value);
+			return;
+		}
+
+		// For regular emoji items
+		const suggestionEl = el.createDiv({ cls: "emoji-suggestion" });
+
+		// Create emoji icon
+		const emojiEl = suggestionEl.createDiv({ cls: "emoji-icon" });
+		emojiEl.setText((item as EmojiData).native);
+
+		// Create description
+		const descEl = suggestionEl.createDiv({ cls: "emoji-description" });
+		descEl.setText((item as EmojiData).name);
+	}
+
+	selectSuggestion(
+		item:
+			| EmojiData
+			| { type: "header"; value: string }
+			| { type: "empty"; value: string },
+		_evt: MouseEvent | KeyboardEvent
+	): void {
+		// Don't do anything for headers or empty results
+		if ("type" in item) {
+			return;
+		}
+
+		// Get the editor and replace the trigger with the emoji
+		const activeView = this.app.workspace.getActiveViewOfType(MarkdownView);
+		if (!activeView) {
+			return;
+		}
+
+		const editor = activeView.editor;
+		const emojiItem = item as EmojiData;
+
+		// Save in recents
+		this.plugin.saveRecentEmoji(emojiItem.native);
+
+		// Replace the text in the editor
+		editor.replaceRange(
+			emojiItem.native,
+			this.context!.start,
+			this.context!.end
+		);
+	}
+}
+
+class QuickEmojiSettingTab extends PluginSettingTab {
+	plugin: QuickEmojiPlugin;
+
+	constructor(app: App, plugin: QuickEmojiPlugin) {
 		super(app, plugin);
 		this.plugin = plugin;
 	}
 
 	display(): void {
-		const {containerEl} = this;
-
+		const { containerEl } = this;
 		containerEl.empty();
 
+		containerEl.createEl("h2", { text: "Quick Emoji Settings" });
+
+		// Theme setting
 		new Setting(containerEl)
-			.setName('Setting #1')
-			.setDesc('It\'s a secret')
-			.addText(text => text
-				.setPlaceholder('Enter your secret')
-				.setValue(this.plugin.settings.mySetting)
-				.onChange(async (value) => {
-					this.plugin.settings.mySetting = value;
-					await this.plugin.saveSettings();
-				}));
+			.setName("Theme")
+			.setDesc("Choose the emoji picker theme")
+			.addDropdown((dropdown) => {
+				dropdown
+					.addOption("auto", "Auto (match Obsidian)")
+					.addOption("light", "Light")
+					.addOption("dark", "Dark")
+					.setValue(this.plugin.settings.theme)
+					.onChange(async (value: "auto" | "light" | "dark") => {
+						this.plugin.settings.theme = value;
+						await this.plugin.saveSettings();
+					});
+			});
+
+		// Skin tone setting
+		new Setting(containerEl)
+			.setName("Default skin tone")
+			.setDesc("Choose the default skin tone for emoji")
+			.addDropdown((dropdown) => {
+				dropdown
+					.addOption("1", "Default")
+					.addOption("2", "Light")
+					.addOption("3", "Medium-Light")
+					.addOption("4", "Medium")
+					.addOption("5", "Medium-Dark")
+					.addOption("6", "Dark")
+					.setValue(this.plugin.settings.skin.toString())
+					.onChange(async (value) => {
+						// Convert to number and ensure it's a valid skin tone (1-6)
+						const skin = parseInt(value);
+						if (skin >= 1 && skin <= 6) {
+							this.plugin.settings.skin = skin as
+								| 1
+								| 2
+								| 3
+								| 4
+								| 5
+								| 6;
+							await this.plugin.saveSettings();
+						}
+					});
+			});
+
+		// Recent emoji count
+		new Setting(containerEl)
+			.setName("Recent emoji count")
+			.setDesc("Number of recent emojis to remember")
+			.addSlider((slider) => {
+				slider
+					.setLimits(5, 50, 5)
+					.setValue(this.plugin.settings.recentCount)
+					.setDynamicTooltip()
+					.onChange(async (value) => {
+						this.plugin.settings.recentCount = value;
+						await this.plugin.saveSettings();
+					});
+			});
+
+		// Recent emojis section
+		containerEl.createEl("h3", { text: "Recent Emojis" });
+
+		if (this.plugin.recentEmojis.length > 0) {
+			const recentContainer = containerEl.createDiv({
+				cls: "recent-emojis",
+			});
+
+			// Display recent emojis
+			for (const emoji of this.plugin.recentEmojis) {
+				const emojiEl = recentContainer.createSpan({
+					cls: "recent-emoji",
+					text: emoji,
+				});
+
+				// Add click handler to insert the emoji
+				emojiEl.addEventListener("click", () => {
+					// Get the active editor
+					const activeView =
+						this.plugin.app.workspace.getActiveViewOfType(
+							MarkdownView
+						);
+					if (activeView && activeView.editor) {
+						const editor = activeView.editor;
+						editor.replaceSelection(emoji);
+					}
+				});
+			}
+
+			// Add clear button
+			new Setting(containerEl).addButton((button) => {
+				button
+					.setButtonText("Clear Recent Emojis")
+					.onClick(async () => {
+						this.plugin.clearRecentEmojis();
+						this.display(); // Refresh the view
+					});
+			});
+		} else {
+			containerEl.createEl("p", {
+				text: "No recent emojis yet. Use the emoji picker or the inline suggester to add some!",
+				cls: "setting-item-description",
+			});
+		}
+	}
+}
+
+// Helper function to get emoji data from a native emoji character
+async function getEmojiFromNative(native: string): Promise<EmojiData | null> {
+	try {
+		const data = await getEmojiDataFromNative(native);
+		return (data as EmojiData) || null;
+	} catch (e) {
+		console.error("Failed to get emoji data", e);
+		return null;
 	}
 }

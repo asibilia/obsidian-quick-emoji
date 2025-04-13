@@ -3,6 +3,10 @@
   "description": "Quick, in-editor, emoji inserting for Obsidian. Type \":\" to start selecting an emoji to insert.",
   "version": "1.0.0",
   "author": "Alec Sibilia",
+  "dependencies": {
+    "@emoji-mart/data": "^1.2.1",
+    "emoji-mart": "^5.6.0"
+  },
   "devDependencies": {
     "@clack/prompts": "~0.7.0",
     "@types/bun": "~1.2.0",
