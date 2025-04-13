@@ -1,0 +1,11 @@
+{
+  "dependencyTypes": ["prod"],
+  "semverGroups": [
+    {
+      "range": "~",
+      "dependencyTypes": ["prod", "resolutions", "overrides", "pnpmOverrides", "peer"],
+      "dependencies": ["**"],
+      "packages": ["**"]
+    }
+  ]
+}

@@ -1,11 +1,11 @@
 {
-	"id": "sample-plugin",
-	"name": "Sample Plugin",
-	"version": "1.0.0",
-	"minAppVersion": "0.15.0",
-	"description": "Demonstrates some of the capabilities of the Obsidian API.",
-	"author": "Obsidian",
-	"authorUrl": "https://obsidian.md",
-	"fundingUrl": "https://obsidian.md/pricing",
-	"isDesktopOnly": false
-}
+  "id": "quick-emoji",
+  "name": "Quick Emoji",
+  "version": "1.0.0",
+  "minAppVersion": "0.15.0",
+  "description": "Quick, in-editor, emoji inserting for Obsidian. Type \":\" to start selecting an emoji to insert.",
+  "author": "Alec Sibilia",
+  "authorUrl": "https://alecsibilia.com",
+  "fundingUrl": "https://buymeacoffee.com/alecsibilia",
+  "isDesktopOnly": false
+} 
