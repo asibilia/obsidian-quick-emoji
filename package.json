@@ -5,10 +5,10 @@
   "author": "Alec Sibilia",
   "devDependencies": {
     "@clack/prompts": "~0.7.0",
+    "@types/bun": "~1.2.0",
     "@types/node": "~22.10.9",
     "@typescript-eslint/eslint-plugin": "5.29.0",
     "@typescript-eslint/parser": "5.29.0",
-    "@types/bun": "~1.2.0",
     "builtin-modules": "3.3.0",
     "chalk": "~5.4.1",
     "esbuild": "0.17.3",
@@ -17,7 +17,13 @@
     "tslib": "2.4.0",
     "typescript": "5.8.3"
   },
-  "keywords": ["obsidian", "emoji", "quick", "insert", "plugin"],
+  "keywords": [
+    "emoji",
+    "insert",
+    "obsidian",
+    "plugin",
+    "quick"
+  ],
   "license": "MIT",
   "main": "main.js",
   "scripts": {
