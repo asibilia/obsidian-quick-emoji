@@ -17,24 +17,6 @@ import {
 import * as emojiData from "@emoji-mart/data";
 import { init, SearchIndex, getEmojiDataFromNative } from "emoji-mart";
 
-// Initialize emoji-mart data
-init({ data: emojiData });
-
-// Function to check if the web component is available
-function isEmojiPickerDefined(): boolean {
-	return typeof customElements.get("em-emoji-picker") !== "undefined";
-}
-
-// Function to trigger an inline emoji search
-async function searchEmojis(query: string): Promise<EmojiData[]> {
-	try {
-		return await SearchIndex.search(query);
-	} catch (error) {
-		console.error("Failed to search emojis:", error);
-		return [];
-	}
-}
-
 interface EmojiData {
 	id: string;
 	name: string;
@@ -42,12 +24,39 @@ interface EmojiData {
 	unified: string;
 	keywords: string[];
 	shortcodes?: string;
+	skins?: Array<{ native: string }>;
 }
 
 interface QuickEmojiSettings {
 	skin: 1 | 2 | 3 | 4 | 5 | 6;
 	theme: "auto" | "light" | "dark";
 	recentCount: number;
+}
+
+// Initialize emoji-mart data with the correct configuration
+init({
+	data: emojiData,
+	set: "native",
+});
+
+// Function to check if the web component is available
+function isEmojiPickerDefined(): boolean {
+	return typeof customElements.get("em-emoji-picker") !== "undefined";
+}
+
+// Function to trigger an inline emoji search using emoji-mart's SearchIndex
+async function searchEmojis(query: string): Promise<EmojiData[]> {
+	try {
+		// Use the SearchIndex API directly
+		const results = await SearchIndex.search(query);
+		if (!results || results.length === 0) {
+			console.log(`Quick Emoji: No results found for query "${query}"`);
+		}
+		return results || [];
+	} catch (error) {
+		console.error("Failed to search emojis:", error);
+		return [];
+	}
 }
 
 const DEFAULT_SETTINGS: QuickEmojiSettings = {
@@ -66,13 +75,15 @@ export default class QuickEmojiPlugin extends Plugin {
 		// Load CSS
 		this.loadStyles();
 
-		// Ensure emoji-mart is loaded - dynamically import it
+		// First initialize the emoji-mart data to ensure search works correctly
 		try {
-			// This import will ensure the web component is registered
-			await import("emoji-mart");
-			console.log("Emoji-mart loaded successfully");
+			await init({ data: emojiData });
+			console.log("Emoji-mart data initialized successfully");
 		} catch (error) {
-			console.error("Failed to load emoji-mart:", error);
+			console.error("Failed to initialize emoji-mart data:", error);
+			new Notice(
+				"Failed to initialize emoji data. Try reloading Obsidian."
+			);
 		}
 
 		// Register the emoji suggester
@@ -296,11 +307,7 @@ class EmojiPickerModal extends Modal {
 	}
 }
 
-class EmojiSuggester extends EditorSuggest<
-	| EmojiData
-	| { type: "header"; value: string }
-	| { type: "empty"; value: string }
-> {
+class EmojiSuggester extends EditorSuggest<EmojiData> {
 	plugin: QuickEmojiPlugin;
 
 	constructor(plugin: QuickEmojiPlugin) {
@@ -317,11 +324,9 @@ class EmojiSuggester extends EditorSuggest<
 		const line = editor.getLine(cursor.line);
 		const subString = line.substring(0, cursor.ch);
 
-		// Find the last colon before cursor
-		const colonMatch = subString.match(/:([^:\s]*)$/);
-		if (!colonMatch) {
-			return null;
-		}
+		// Find the last colon before cursor - match even if it's just a single colon
+		const colonMatch = subString.match(/:([\w]*)$/);
+		if (!colonMatch) return null;
 
 		// Trigger the emoji suggester
 		return {
@@ -334,127 +339,167 @@ class EmojiSuggester extends EditorSuggest<
 		};
 	}
 
-	async getSuggestions(
-		context: EditorSuggestContext
-	): Promise<
-		(
-			| EmojiData
-			| { type: "header"; value: string }
-			| { type: "empty"; value: string }
-		)[]
-	> {
+	async getSuggestions(context: EditorSuggestContext): Promise<EmojiData[]> {
 		const query = context.query || "";
+		let results: EmojiData[] = [];
 
-		// If query is empty, show recent emojis first
-		if (!query) {
-			const recentSection: Array<
-				| EmojiData
-				| { type: "header"; value: string }
-				| { type: "empty"; value: string }
-			> = [];
+		// Add recent emojis only if there's no search query
+		if (!query && this.plugin.recentEmojis.length > 0) {
+			for (const native of this.plugin.recentEmojis) {
+				try {
+					const emojiData = await getEmojiFromNative(native);
+					if (emojiData) results.push(emojiData);
+				} catch (e) {
+					console.error("Failed to get emoji data for", native, e);
+				}
+			}
+		}
 
-			// Add recents header if there are recent emojis
-			if (this.plugin.recentEmojis.length > 0) {
-				recentSection.push({ type: "header", value: "Recent" });
+		try {
+			// Get emoji results - use appropriate search based on query
+			let searchResults: EmojiData[] = [];
 
-				// Get emoji data for each recent emoji
-				for (const native of this.plugin.recentEmojis) {
-					try {
-						const emojiData = await getEmojiFromNative(native);
-						if (emojiData) {
-							recentSection.push(emojiData);
-						}
-					} catch (e) {
-						console.error(
-							"Failed to get emoji data for",
-							native,
-							e
-						);
-					}
+			if (query) {
+				// If user has typed something, do a specific search
+				searchResults = await searchEmojis(query);
+			} else {
+				// When user has only typed ":", get popular emojis
+				try {
+					// Search for popular emoji categories
+					const categories = [
+						"people",
+						"nature",
+						"foods",
+						"activity",
+						"places",
+						"objects",
+						"symbols",
+						"flags",
+					];
+					const allResults: EmojiData[] = [];
+
+					// Use Promise.all to fetch all categories in parallel for better performance
+					await Promise.all(
+						categories.map(async (category) => {
+							const categoryResults = await SearchIndex.search(
+								category
+							);
+							if (categoryResults && categoryResults.length > 0) {
+								allResults.push(...categoryResults);
+							}
+						})
+					);
+
+					console.log(
+						`Quick Emoji: Retrieved ${searchResults.length} unique emojis`
+					);
+				} catch (error) {
+					console.error(
+						"Quick Emoji: Failed to get full emoji list:",
+						error
+					);
+					// Fall back to a simpler search
+					searchResults = await SearchIndex.search("");
 				}
 			}
 
-			// Add popular header
-			recentSection.push({ type: "header", value: "Frequently Used" });
+			// Add search results to the final results
+			if (searchResults && searchResults.length > 0) {
+				// Filter out duplicates that might already be in recent emojis
+				const existingIds = new Set(results.map((emoji) => emoji.id));
+				const filteredSearchResults = searchResults.filter(
+					(emoji) => !existingIds.has(emoji.id)
+				);
 
-			// Get some popular emojis
-			const popularEmojis = await searchEmojis("thumbs up");
-			return [...recentSection, ...popularEmojis];
-		}
-
-		// Search for emoji matching the query
-		const results = await searchEmojis(query);
-
-		// If no results, show empty message
-		if (results.length === 0) {
-			return [{ type: "empty", value: "No emojis found" }];
+				// Add filtered search results to the final results
+				results = [...results, ...filteredSearchResults];
+			}
+		} catch (error) {
+			console.error("Quick Emoji: Error searching emojis:", error);
 		}
 
 		return results;
 	}
 
-	renderSuggestion(
-		item:
-			| EmojiData
-			| { type: "header"; value: string }
-			| { type: "empty"; value: string },
-		el: HTMLElement
-	): void {
+	renderSuggestion(item: EmojiData, el: HTMLElement): void {
 		el.empty();
-
-		// For section headers
-		if ("type" in item && item.type === "header") {
-			el.addClass("suggestion-header");
-			el.setText(item.value);
-			return;
-		}
-
-		// For empty results
-		if ("type" in item && item.type === "empty") {
-			el.addClass("emoji-suggestion");
-			el.setText(item.value);
-			return;
-		}
-
 		// For regular emoji items
+		const emojiItem = item as EmojiData;
 		const suggestionEl = el.createDiv({ cls: "emoji-suggestion" });
 
-		// Create emoji icon
+		// Create emoji icon - use the native emoji directly
 		const emojiEl = suggestionEl.createDiv({ cls: "emoji-icon" });
-		emojiEl.setText((item as EmojiData).native);
+
+		// Directly display the native emoji
+		if (emojiItem.native) {
+			emojiEl.setText(emojiItem.native);
+		}
+		// If we have a skin variant, use that
+		else if (
+			emojiItem.skins &&
+			emojiItem.skins.length > 0 &&
+			emojiItem.skins[0].native
+		) {
+			emojiEl.setText(emojiItem.skins[0].native);
+		}
+		// Fallback to unified code conversion if needed
+		else if (emojiItem.unified) {
+			try {
+				const unified = emojiItem.unified.split("-");
+				const codePoints = unified.map((u) => parseInt(u, 16));
+				emojiEl.setText(String.fromCodePoint(...codePoints));
+			} catch (e) {
+				console.error("Failed to convert unified code:", e);
+				// Simple fallback - use an emoji symbol that will always work
+				emojiEl.setText("🔣");
+			}
+		} else {
+			// Last resort fallback - use an emoji symbol that will always work
+			emojiEl.setText("🔣");
+		}
 
 		// Create description
 		const descEl = suggestionEl.createDiv({ cls: "emoji-description" });
-		descEl.setText((item as EmojiData).name);
+		descEl.setText(emojiItem.name);
 	}
 
-	selectSuggestion(
-		item:
-			| EmojiData
-			| { type: "header"; value: string }
-			| { type: "empty"; value: string },
-		_evt: MouseEvent | KeyboardEvent
-	): void {
-		// Don't do anything for headers or empty results
-		if ("type" in item) {
-			return;
-		}
-
+	selectSuggestion(item: EmojiData, _evt: MouseEvent | KeyboardEvent): void {
 		// Get the editor and replace the trigger with the emoji
 		const activeView = this.app.workspace.getActiveViewOfType(MarkdownView);
-		if (!activeView) {
-			return;
-		}
+		if (!activeView) return;
 
 		const editor = activeView.editor;
 		const emojiItem = item as EmojiData;
 
-		// Save in recents
-		this.plugin.saveRecentEmoji(emojiItem.native);
+		// Get the emoji character to insert - prioritize native emoji
+		let emojiChar = emojiItem.native;
+
+		// If no native emoji available, try to get from skins
+		if (!emojiChar && emojiItem.skins && emojiItem.skins.length > 0) {
+			emojiChar = emojiItem.skins[0].native;
+		}
+
+		// If still no emoji, try to convert from unified code
+		if (!emojiChar && emojiItem.unified) {
+			try {
+				const unified = emojiItem.unified.split("-");
+				const codePoints = unified.map((u) => parseInt(u, 16));
+				emojiChar = String.fromCodePoint(...codePoints);
+			} catch (e) {
+				console.error("Failed to convert unified code to emoji:", e);
+				// Fallback to shortcode if conversion fails
+				emojiChar = emojiItem.shortcodes || `:${emojiItem.name}:`;
+			}
+		}
+
+		// Save in recents only if we have a valid emoji character (not a shortcode)
+		if (emojiChar && !emojiChar.startsWith(":")) {
+			this.plugin.saveRecentEmoji(emojiChar);
+		}
 
 		// Replace the text in the editor
 		editor.replaceRange(
-			emojiItem.native,
+			emojiChar || `:${emojiItem.name}:`, // Fallback to name as shortcode
 			this.context!.start,
 			this.context!.end
 		);
@@ -585,10 +630,42 @@ class QuickEmojiSettingTab extends PluginSettingTab {
 // Helper function to get emoji data from a native emoji character
 async function getEmojiFromNative(native: string): Promise<EmojiData | null> {
 	try {
+		// Use emoji-mart's getEmojiDataFromNative directly
 		const data = await getEmojiDataFromNative(native);
-		return (data as EmojiData) || null;
+
+		if (data) {
+			// Convert the return data to our EmojiData interface
+			return {
+				id: data.id || "",
+				name: data.name || "",
+				native: native, // Use the original emoji to ensure it works
+				unified: data.unified || "",
+				keywords: Array.isArray(data.keywords) ? data.keywords : [],
+				shortcodes: data.shortcodes || "",
+				skins: data.skins || [],
+			};
+		}
+
+		console.warn("No emoji data returned for:", native);
+
+		// Return a basic fallback
+		return {
+			id: `emoji_${Date.now()}`,
+			name: "Emoji",
+			native: native,
+			unified: "",
+			keywords: [],
+		};
 	} catch (e) {
-		console.error("Failed to get emoji data", e);
-		return null;
+		console.error("Failed to get emoji data:", e);
+
+		// Return a fallback on error
+		return {
+			id: `emoji_${Date.now()}`,
+			name: "Emoji",
+			native: native,
+			unified: "",
+			keywords: [],
+		};
 	}
 }
