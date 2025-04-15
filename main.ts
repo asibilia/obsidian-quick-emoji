@@ -6,7 +6,6 @@ import {
 	EditorSuggestContext,
 	EditorSuggestTriggerInfo,
 	MarkdownView,
-	Modal,
 	Notice,
 	Plugin,
 	PluginSettingTab,
@@ -41,6 +40,44 @@ const DEFAULT_SETTINGS: QuickEmojiSettings = {
 	theme: "auto",
 	recentCount: 20,
 };
+
+// Emoji category definitions
+const EMOJI_CATEGORIES = [
+	"activity",
+	"animals",
+	"face",
+	"flags",
+	"foods",
+	"frequent",
+	"nature",
+	"objects",
+	"people",
+	"places",
+	"symbols",
+	"travel",
+];
+
+// Helper function to get active editor
+function getActiveEditor(app: App): Editor | null {
+	const activeView = app.workspace.getActiveViewOfType(MarkdownView);
+	return activeView?.editor || null;
+}
+
+// Helper function to get emoji with correct skin tone
+function getEmojiWithSkin(emojiItem: EmojiData, skinTone: SkinSetting): string {
+	// If emoji has skin variants and user has selected a non-default skin, use that
+	if (
+		emojiItem.skins &&
+		emojiItem.skins.length > 0 &&
+		emojiItem.skins[skinTone] &&
+		emojiItem.skins[skinTone].native
+	) {
+		return emojiItem.skins[skinTone].native;
+	}
+
+	// Default to native emoji
+	return emojiItem.native || `:${emojiItem.name}:`;
+}
 
 // Function to trigger an inline emoji search using emoji-mart's SearchIndex
 async function searchEmojis(query: string): Promise<EmojiData[]> {
@@ -178,26 +215,11 @@ class EmojiSuggester extends EditorSuggest<EmojiData> {
 			} else {
 				// When user has only typed ":", get popular emojis
 				try {
-					const categories = [
-						"activity",
-						"animals",
-						"face",
-						"flags",
-						"foods",
-						"frequent",
-						"nature",
-						"objects",
-						"people",
-						"places",
-						"symbols",
-						"travel",
-					];
-
 					const allResults: EmojiData[] = [];
 
 					// Use Promise.all to fetch all categories in parallel for better performance
 					await Promise.all(
-						categories.map(async (category) => {
+						EMOJI_CATEGORIES.map(async (category) => {
 							const categoryResults = await SearchIndex.search(
 								category
 							);
@@ -236,54 +258,29 @@ class EmojiSuggester extends EditorSuggest<EmojiData> {
 
 	renderSuggestion(item: EmojiData, el: HTMLElement): void {
 		el.empty();
-		// For regular emoji items
-		const emojiItem = item as EmojiData;
 		const suggestionEl = el.createDiv({ cls: "emoji-suggestion" });
 
 		// Create emoji icon - use the native emoji directly
 		const emojiEl = suggestionEl.createDiv({ cls: "emoji-icon" });
 
-		// If we have a skin variant, use that
-		if (
-			emojiItem.skins &&
-			emojiItem.skins.length > 0 &&
-			emojiItem.skins[this.plugin.settings.skin] &&
-			emojiItem.skins[this.plugin.settings.skin].native
-		) {
-			// Use the selected skin tone (adjusting index since skins array is 0-based but settings start at 1)
-			emojiEl.setText(emojiItem.skins[this.plugin.settings.skin].native);
-		} else if (emojiItem.native) {
-			emojiEl.setText(emojiItem.native);
-		} else {
-			// Last resort fallback - use an emoji symbol that will always work
-			emojiEl.setText("🔣");
-		}
+		// Get emoji with proper skin tone
+		const emojiChar = getEmojiWithSkin(item, this.plugin.settings.skin);
+
+		// Set the emoji text
+		emojiEl.setText(emojiChar !== `:${item.name}:` ? emojiChar : "🔣");
 
 		// Create description
 		const descEl = suggestionEl.createDiv({ cls: "emoji-description" });
-		descEl.setText(emojiItem.name);
+		descEl.setText(item.name);
 	}
 
 	selectSuggestion(item: EmojiData, _evt: MouseEvent | KeyboardEvent): void {
-		// Get the editor and replace the trigger with the emoji
-		const activeView = this.app.workspace.getActiveViewOfType(MarkdownView);
-		if (!activeView) return;
+		// Get the editor
+		const editor = getActiveEditor(this.app);
+		if (!editor) return;
 
-		const editor = activeView.editor;
-		const emojiItem = item as EmojiData;
-
-		// Get the emoji character to insert - prioritize native emoji
-		let emojiChar = emojiItem.native;
-
-		// If emoji has skin variants and user has selected a non-default skin, use that
-		if (
-			emojiItem.skins &&
-			emojiItem.skins.length > 0 &&
-			emojiItem.skins[this.plugin.settings.skin] &&
-			emojiItem.skins[this.plugin.settings.skin].native
-		) {
-			emojiChar = emojiItem.skins[this.plugin.settings.skin].native;
-		}
+		// Get emoji with proper skin tone
+		const emojiChar = getEmojiWithSkin(item, this.plugin.settings.skin);
 
 		// Save in recents only if we have a valid emoji character (not a shortcode)
 		if (emojiChar && !emojiChar.startsWith(":")) {
@@ -291,11 +288,7 @@ class EmojiSuggester extends EditorSuggest<EmojiData> {
 		}
 
 		// Replace the text in the editor
-		editor.replaceRange(
-			emojiChar || `:${emojiItem.name}:`, // Fallback to name as shortcode
-			this.context!.start,
-			this.context!.end
-		);
+		editor.replaceRange(emojiChar, this.context!.start, this.context!.end);
 	}
 }
 
@@ -365,7 +358,12 @@ class QuickEmojiSettingTab extends PluginSettingTab {
 			});
 
 		// Recent emojis section
+		this.renderRecentEmojis(containerEl);
+	}
+
+	private renderRecentEmojis(containerEl: HTMLElement): void {
 		containerEl.createEl("h3", { text: "Recent Emojis" });
+		containerEl.createEl("small", { text: "Click to insert" });
 
 		if (this.plugin.recentEmojis.length > 0) {
 			const recentContainer = containerEl.createDiv({
@@ -377,17 +375,13 @@ class QuickEmojiSettingTab extends PluginSettingTab {
 				const emojiEl = recentContainer.createSpan({
 					cls: "recent-emoji",
 					text: emoji,
+					title: `Insert ${emoji}`,
 				});
 
 				// Add click handler to insert the emoji
 				emojiEl.addEventListener("click", () => {
-					// Get the active editor
-					const activeView =
-						this.plugin.app.workspace.getActiveViewOfType(
-							MarkdownView
-						);
-					if (activeView && activeView.editor) {
-						const editor = activeView.editor;
+					const editor = getActiveEditor(this.app);
+					if (editor) {
 						editor.replaceSelection(emoji);
 					}
 				});
