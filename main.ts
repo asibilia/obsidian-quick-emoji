@@ -90,7 +90,6 @@ export default class QuickEmojiPlugin extends Plugin {
 		// First initialize the emoji-mart data to ensure search works correctly
 		try {
 			await init({ data: emojiData, set: "native" });
-			console.log("Emoji-mart data initialized successfully");
 		} catch (error) {
 			console.error("Failed to initialize emoji-mart data:", error);
 			new Notice(
