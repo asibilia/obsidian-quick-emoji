@@ -13,17 +13,9 @@ import {
 	TFile,
 } from "obsidian";
 
+import { type EmojiMartData, type Emoji } from "@emoji-mart/data";
+import { init, SearchIndex } from "emoji-mart";
 import * as emojiData from "@emoji-mart/data";
-import { init, SearchIndex, getEmojiDataFromNative } from "emoji-mart";
-
-interface EmojiData {
-	id: string;
-	name: string;
-	unified: string;
-	keywords: string[];
-	shortcodes?: string;
-	skins: Array<{ native: string }>;
-}
 
 type SkinSetting = 0 | 1 | 2 | 3 | 4 | 5;
 
@@ -60,20 +52,31 @@ function getActiveEditor(app: App): Editor | null {
 }
 
 // Helper function to get emoji with correct skin tone
-function getEmojiWithSkin(emojiItem: EmojiData, skinTone: SkinSetting): string {
+function getEmojiWithSkin(emojiItem: Emoji, skinTone: SkinSetting): string {
+	if (!emojiItem) return "";
+
 	// If default skin tone is selected OR emoji doesn't support skin tones, use native emoji
-	if (skinTone === 0 || emojiItem.skins?.length === 1) {
+	if (skinTone === 0 || !emojiItem.skins || emojiItem.skins.length <= 1) {
 		return emojiItem.skins?.[0]?.native ?? emojiItem.name;
 	}
+
 	// Get skin tone variant if it exists, otherwise fall back to native emoji
-	return emojiItem.skins?.[skinTone]?.native ?? emojiItem.name;
+	return (
+		emojiItem.skins?.[skinTone]?.native ??
+		emojiItem.skins?.[0]?.native ??
+		emojiItem.name
+	);
 }
 
 // Function to trigger an inline emoji search using emoji-mart's SearchIndex
-async function searchEmojis(query: string): Promise<EmojiData[]> {
+async function searchEmojis(query: string): Promise<Emoji[]> {
 	try {
+		if (!SearchIndex) {
+			console.error("SearchIndex not initialized");
+			return [];
+		}
 		const emojis = await SearchIndex.search(query);
-		return emojis;
+		return emojis || [];
 	} catch (error) {
 		console.error("Failed to search emojis:", error);
 		return [];
@@ -82,14 +85,16 @@ async function searchEmojis(query: string): Promise<EmojiData[]> {
 
 export default class QuickEmojiPlugin extends Plugin {
 	settings: QuickEmojiSettings;
-	recentEmojis: EmojiData[] = [];
+	recentEmojis: Emoji[] = [];
+	emojiSuggester: EmojiSuggester;
+	storageKey = "obsidian-quick-emoji-recent"; // Namespaced storage key
 
 	async onload() {
 		await this.loadSettings();
 
 		// First initialize the emoji-mart data to ensure search works correctly
 		try {
-			await init({ data: emojiData, set: "native" });
+			await init({ data: emojiData as EmojiMartData, set: "native" });
 		} catch (error) {
 			console.error("Failed to initialize emoji-mart data:", error);
 			new Notice(
@@ -98,10 +103,16 @@ export default class QuickEmojiPlugin extends Plugin {
 		}
 
 		// Register the emoji suggester
-		this.registerEditorSuggest(new EmojiSuggester(this));
+		this.emojiSuggester = new EmojiSuggester(this);
+		this.registerEditorSuggest(this.emojiSuggester);
 
 		// Add settings tab
 		this.addSettingTab(new QuickEmojiSettingTab(this.app, this));
+	}
+
+	onunload() {
+		// Clean up any resources and references when the plugin is disabled
+		console.log("Unloading Quick Emoji plugin");
 	}
 
 	async loadSettings() {
@@ -112,16 +123,16 @@ export default class QuickEmojiPlugin extends Plugin {
 		);
 
 		// Load recent emojis from local storage
-		const recentData = localStorage.getItem("quick-emoji-recent");
-		if (recentData) {
-			try {
+		try {
+			const recentData = localStorage.getItem(this.storageKey);
+			if (recentData) {
 				this.recentEmojis = JSON.parse(recentData);
 				// Clean up any potentially invalid emojis
 				this.cleanupRecentEmojis();
-			} catch (e) {
-				console.error("Failed to parse recent emojis", e);
-				this.recentEmojis = [];
 			}
+		} catch (e) {
+			console.error("Failed to load recent emojis from localStorage", e);
+			this.recentEmojis = [];
 		}
 	}
 
@@ -129,22 +140,32 @@ export default class QuickEmojiPlugin extends Plugin {
 		await this.saveData(this.settings);
 	}
 
-	saveRecentEmoji(emoji: EmojiData) {
+	saveRecentEmoji(emoji: Emoji) {
+		if (!emoji) return;
+
 		// Add to the beginning, remove duplicates
 		this.recentEmojis = [
 			emoji,
-			...this.recentEmojis.filter((e) => e !== emoji),
+			...this.recentEmojis.filter((e) => e.id !== emoji.id),
 		].slice(0, this.settings.recentCount);
 
-		localStorage.setItem(
-			"quick-emoji-recent",
-			JSON.stringify(this.recentEmojis)
-		);
+		try {
+			localStorage.setItem(
+				this.storageKey,
+				JSON.stringify(this.recentEmojis)
+			);
+		} catch (e) {
+			console.error("Failed to save recent emojis to localStorage", e);
+		}
 	}
 
 	clearRecentEmojis() {
 		this.recentEmojis = [];
-		localStorage.removeItem("quick-emoji-recent");
+		try {
+			localStorage.removeItem(this.storageKey);
+		} catch (e) {
+			console.error("Failed to clear recent emojis from localStorage", e);
+		}
 	}
 
 	cleanupRecentEmojis() {
@@ -159,14 +180,18 @@ export default class QuickEmojiPlugin extends Plugin {
 		);
 
 		// Save the cleaned list
-		localStorage.setItem(
-			"quick-emoji-recent",
-			JSON.stringify(this.recentEmojis)
-		);
+		try {
+			localStorage.setItem(
+				this.storageKey,
+				JSON.stringify(this.recentEmojis)
+			);
+		} catch (e) {
+			console.error("Failed to save cleaned recent emojis", e);
+		}
 	}
 }
 
-class EmojiSuggester extends EditorSuggest<EmojiData> {
+class EmojiSuggester extends EditorSuggest<Emoji> {
 	plugin: QuickEmojiPlugin;
 
 	constructor(plugin: QuickEmojiPlugin) {
@@ -198,9 +223,9 @@ class EmojiSuggester extends EditorSuggest<EmojiData> {
 		};
 	}
 
-	async getSuggestions(context: EditorSuggestContext): Promise<EmojiData[]> {
+	async getSuggestions(context: EditorSuggestContext): Promise<Emoji[]> {
 		const query = context.query || "";
-		let results: EmojiData[] = [];
+		let results: Emoji[] = [];
 
 		// Add recent emojis only if there's no search query
 		if (!query && this.plugin.recentEmojis.length > 0) {
@@ -211,7 +236,7 @@ class EmojiSuggester extends EditorSuggest<EmojiData> {
 
 		try {
 			// Get emoji results - use appropriate search based on query
-			let searchResults: EmojiData[] = [];
+			let searchResults: Emoji[] = [];
 
 			if (query) {
 				// If user has typed something, do a specific search
@@ -219,7 +244,7 @@ class EmojiSuggester extends EditorSuggest<EmojiData> {
 			} else {
 				// When user has only typed ":", get popular emojis
 				try {
-					const allResults: EmojiData[] = [];
+					const allResults: Emoji[] = [];
 
 					// Use Promise.all to fetch all categories in parallel for better performance
 					await Promise.all(
@@ -230,7 +255,7 @@ class EmojiSuggester extends EditorSuggest<EmojiData> {
 							allResults.push(
 								...(categoryResults ?? [])
 									// Sort alphabetically
-									.sort((a: EmojiData, b: EmojiData) =>
+									.sort((a: Emoji, b: Emoji) =>
 										a.name.localeCompare(b.name)
 									)
 							);
@@ -260,7 +285,7 @@ class EmojiSuggester extends EditorSuggest<EmojiData> {
 		return results;
 	}
 
-	renderSuggestion(item: EmojiData, el: HTMLElement): void {
+	renderSuggestion(item: Emoji, el: HTMLElement): void {
 		el.empty();
 
 		const suggestionEl = el.createDiv({ cls: "emoji-suggestion" });
@@ -282,7 +307,7 @@ class EmojiSuggester extends EditorSuggest<EmojiData> {
 		descEl.setText(item.name);
 	}
 
-	selectSuggestion(item: EmojiData, _evt: MouseEvent | KeyboardEvent): void {
+	selectSuggestion(item: Emoji, _evt: MouseEvent | KeyboardEvent): void {
 		// Get the editor
 		const editor = getActiveEditor(this.app);
 		if (!editor) return;

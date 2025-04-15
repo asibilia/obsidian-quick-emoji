@@ -4,11 +4,12 @@
   "version": "1.0.2",
   "author": "Alec Sibilia",
   "dependencies": {
-    "@emoji-mart/data": "^1.2.1",
-    "emoji-mart": "^5.6.0"
+    "@emoji-mart/data": "~1.2.1",
+    "emoji-mart": "~5.6.0"
   },
   "devDependencies": {
     "@clack/prompts": "~0.7.0",
+    "@eslint/js": "^9.24.0",
     "@types/bun": "~1.2.0",
     "@types/node": "~22.10.9",
     "@typescript-eslint/eslint-plugin": "5.29.0",
@@ -16,10 +17,15 @@
     "builtin-modules": "3.3.0",
     "chalk": "~5.4.1",
     "esbuild": "0.17.3",
+    "eslint": "^9.24.0",
+    "eslint-plugin-import": "^2.31.0",
+    "eslint-plugin-prettier": "^5.2.6",
+    "globals": "^16.0.0",
     "obsidian": "latest",
     "syncpack": "~13.0.0",
     "tslib": "2.4.0",
-    "typescript": "5.8.3"
+    "typescript": "5.8.3",
+    "typescript-eslint": "^8.30.1"
   },
   "keywords": [
     "emoji",
@@ -32,8 +38,8 @@
   "main": "main.js",
   "scripts": {
     "build": "tsc -noEmit -skipLibCheck && node esbuild.config.mjs production",
+    "commit": "bun run commit.ts",
     "dev": "node esbuild.config.mjs",
-    "version": "node version-bump.mjs && git add manifest.json versions.json",
-    "commit": "bun run commit.ts"
+    "version": "node version-bump.mjs && git add manifest.json versions.json"
   }
 }
