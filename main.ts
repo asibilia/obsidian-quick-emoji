@@ -27,17 +27,14 @@ interface EmojiData {
 }
 
 type SkinSetting = 0 | 1 | 2 | 3 | 4 | 5;
-type ThemeSetting = "auto" | "light" | "dark";
 
 interface QuickEmojiSettings {
 	skin: SkinSetting;
-	theme: ThemeSetting;
 	recentCount: number;
 }
 
 const DEFAULT_SETTINGS: QuickEmojiSettings = {
 	skin: 0,
-	theme: "auto",
 	recentCount: 20,
 };
 
@@ -65,18 +62,8 @@ function getActiveEditor(app: App): Editor | null {
 
 // Helper function to get emoji with correct skin tone
 function getEmojiWithSkin(emojiItem: EmojiData, skinTone: SkinSetting): string {
-	// If emoji has skin variants and user has selected a non-default skin, use that
-	if (
-		emojiItem.skins &&
-		emojiItem.skins.length > 0 &&
-		emojiItem.skins[skinTone] &&
-		emojiItem.skins[skinTone].native
-	) {
-		return emojiItem.skins[skinTone].native;
-	}
-
 	// Default to native emoji
-	return emojiItem.native || `:${emojiItem.name}:`;
+	return emojiItem.skins?.[skinTone]?.native ?? `:${emojiItem.name}:`;
 }
 
 // Function to trigger an inline emoji search using emoji-mart's SearchIndex
@@ -267,7 +254,7 @@ class EmojiSuggester extends EditorSuggest<EmojiData> {
 		const emojiChar = getEmojiWithSkin(item, this.plugin.settings.skin);
 
 		// Set the emoji text
-		emojiEl.setText(emojiChar !== `:${item.name}:` ? emojiChar : "🔣");
+		emojiEl.setText(emojiChar);
 
 		// Create description
 		const descEl = suggestionEl.createDiv({ cls: "emoji-description" });
@@ -305,22 +292,6 @@ class QuickEmojiSettingTab extends PluginSettingTab {
 		containerEl.empty();
 
 		containerEl.createEl("h2", { text: "Quick Emoji Settings" });
-
-		// Theme setting
-		new Setting(containerEl)
-			.setName("Theme")
-			.setDesc("Choose the emoji picker theme")
-			.addDropdown((dropdown) => {
-				dropdown
-					.addOption("auto", "Auto (match Obsidian)")
-					.addOption("light", "Light")
-					.addOption("dark", "Dark")
-					.setValue(this.plugin.settings.theme)
-					.onChange(async (value: "auto" | "light" | "dark") => {
-						this.plugin.settings.theme = value;
-						await this.plugin.saveSettings();
-					});
-			});
 
 		// Skin tone setting
 		new Setting(containerEl)
