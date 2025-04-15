@@ -1,7 +1,7 @@
 {
   "name": "obsidian-quick-emoji",
   "description": "Quick, in-editor, emoji inserting for Obsidian. Type \":\" to start selecting an emoji to insert.",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "author": "Alec Sibilia",
   "dependencies": {
     "@emoji-mart/data": "^1.2.1",
@@ -33,6 +33,7 @@
   "scripts": {
     "build": "tsc -noEmit -skipLibCheck && node esbuild.config.mjs production",
     "dev": "node esbuild.config.mjs",
-    "version": "node version-bump.mjs && git add manifest.json versions.json"
+    "version": "node version-bump.mjs && git add manifest.json versions.json",
+    "commit": "bun run commit.ts"
   }
 }
