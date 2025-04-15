@@ -1,7 +1,7 @@
 {
   "name": "obsidian-quick-emoji",
   "description": "Quick, in-editor, emoji inserting for Obsidian. Type \":\" to start selecting an emoji to insert.",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "author": "Alec Sibilia",
   "dependencies": {
     "@emoji-mart/data": "~1.2.1",

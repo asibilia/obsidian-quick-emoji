@@ -1,7 +1,7 @@
 {
 	"id": "quick-emoji",
 	"name": "Quick Emoji",
-	"version": "1.0.3",
+	"version": "1.0.4",
 	"minAppVersion": "0.15.0",
 	"description": "Quick, in-editor, emoji inserting for Obsidian. Type \":\" to start selecting an emoji to insert.",
 	"author": "Alec Sibilia",
