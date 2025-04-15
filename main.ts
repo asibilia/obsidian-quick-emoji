@@ -33,37 +33,28 @@ interface QuickEmojiSettings {
 	recentCount: number;
 }
 
+const DEFAULT_SETTINGS: QuickEmojiSettings = {
+	skin: 1,
+	theme: "auto",
+	recentCount: 20,
+};
+
 // Initialize emoji-mart data with the correct configuration
 init({
 	data: emojiData,
 	set: "native",
 });
 
-// Function to check if the web component is available
-function isEmojiPickerDefined(): boolean {
-	return typeof customElements.get("em-emoji-picker") !== "undefined";
-}
-
 // Function to trigger an inline emoji search using emoji-mart's SearchIndex
 async function searchEmojis(query: string): Promise<EmojiData[]> {
 	try {
-		// Use the SearchIndex API directly
-		const results = await SearchIndex.search(query);
-		if (!results || results.length === 0) {
-			console.log(`Quick Emoji: No results found for query "${query}"`);
-		}
-		return results || [];
+		const emojis = await SearchIndex.search(query);
+		return emojis;
 	} catch (error) {
 		console.error("Failed to search emojis:", error);
 		return [];
 	}
 }
-
-const DEFAULT_SETTINGS: QuickEmojiSettings = {
-	skin: 1,
-	theme: "auto",
-	recentCount: 20,
-};
 
 export default class QuickEmojiPlugin extends Plugin {
 	settings: QuickEmojiSettings;
@@ -91,20 +82,6 @@ export default class QuickEmojiPlugin extends Plugin {
 
 		// Add settings tab
 		this.addSettingTab(new QuickEmojiSettingTab(this.app, this));
-
-		// Add ribbon icon for emoji picker
-		this.addRibbonIcon("smile", "Insert emoji", () => {
-			this.showEmojiPicker();
-		});
-
-		// Add command to open emoji picker
-		this.addCommand({
-			id: "open-emoji-picker",
-			name: "Open emoji picker",
-			callback: () => {
-				this.showEmojiPicker();
-			},
-		});
 
 		// Listen for emoji-mart component load
 		window.addEventListener("emoji-mart:state:change", (e: CustomEvent) => {
@@ -149,6 +126,7 @@ export default class QuickEmojiPlugin extends Plugin {
 			emoji,
 			...this.recentEmojis.filter((e) => e !== emoji),
 		].slice(0, this.settings.recentCount);
+
 		localStorage.setItem(
 			"quick-emoji-recent",
 			JSON.stringify(this.recentEmojis)
@@ -158,10 +136,6 @@ export default class QuickEmojiPlugin extends Plugin {
 	clearRecentEmojis() {
 		this.recentEmojis = [];
 		localStorage.removeItem("quick-emoji-recent");
-	}
-
-	showEmojiPicker() {
-		new EmojiPickerModal(this).open();
 	}
 
 	loadStyles() {
@@ -208,105 +182,6 @@ export default class QuickEmojiPlugin extends Plugin {
 	}
 }
 
-class EmojiPickerModal extends Modal {
-	plugin: QuickEmojiPlugin;
-
-	constructor(plugin: QuickEmojiPlugin) {
-		super(plugin.app);
-		this.plugin = plugin;
-	}
-
-	onOpen() {
-		const { contentEl } = this;
-		contentEl.empty();
-		contentEl.addClass("quick-emoji-modal");
-
-		// Create emoji picker container
-		const pickerContainer = contentEl.createDiv({
-			cls: "emoji-picker-container",
-		});
-
-		try {
-			// Check if emoji picker component is defined
-			if (!isEmojiPickerDefined()) {
-				// If it's not defined, we need to add a warning message
-				pickerContainer.createEl("div", {
-					cls: "emoji-picker-error",
-					text: "Emoji picker component is not available. Please reload Obsidian and try again.",
-				});
-
-				// Create a reload button
-				const reloadButton = pickerContainer.createEl("button", {
-					cls: "emoji-picker-reload-btn",
-					text: "Reload Now",
-				});
-
-				reloadButton.addEventListener("click", () => {
-					window.location.reload();
-				});
-
-				return;
-			}
-
-			// Create the web component element
-			const pickerElement = document.createElement("em-emoji-picker");
-
-			// Set attributes based on plugin settings
-			pickerElement.setAttribute(
-				"skin",
-				this.plugin.settings.skin.toString()
-			);
-			pickerElement.setAttribute("theme", this.plugin.settings.theme);
-			pickerElement.setAttribute("categories-position", "top");
-
-			// Handle recents
-			if (this.plugin.recentEmojis.length > 0) {
-				// Format recent emojis for the picker
-				const recentsJson = JSON.stringify(
-					this.plugin.recentEmojis.map((native) => ({ native }))
-				);
-				pickerElement.setAttribute("data-recents", recentsJson);
-			}
-
-			// Listen for emoji selection
-			pickerElement.addEventListener("emoji-click", (e: CustomEvent) => {
-				const emoji = e.detail.emoji;
-				const native = emoji.native || emoji;
-
-				// Get the active editor
-				const activeView =
-					this.plugin.app.workspace.getActiveViewOfType(MarkdownView);
-				if (activeView && activeView.editor) {
-					const editor = activeView.editor;
-					editor.replaceSelection(native);
-
-					// Save as recent
-					this.plugin.saveRecentEmoji(native);
-
-					// Close the modal
-					this.close();
-				} else {
-					new Notice("No active editor found.");
-				}
-			});
-
-			// Add the picker to container
-			pickerContainer.appendChild(pickerElement);
-		} catch (error) {
-			console.error("Failed to create emoji picker:", error);
-			pickerContainer.createEl("div", {
-				cls: "emoji-picker-error",
-				text: "Failed to create emoji picker. Try reloading Obsidian.",
-			});
-		}
-	}
-
-	onClose() {
-		const { contentEl } = this;
-		contentEl.empty();
-	}
-}
-
 class EmojiSuggester extends EditorSuggest<EmojiData> {
 	plugin: QuickEmojiPlugin;
 
@@ -347,7 +222,7 @@ class EmojiSuggester extends EditorSuggest<EmojiData> {
 		if (!query && this.plugin.recentEmojis.length > 0) {
 			for (const native of this.plugin.recentEmojis) {
 				try {
-					const emojiData = await getEmojiFromNative(native);
+					const emojiData = await getEmojiDataFromNative(native);
 					if (emojiData) results.push(emojiData);
 				} catch (e) {
 					console.error("Failed to get emoji data for", native, e);
@@ -365,17 +240,21 @@ class EmojiSuggester extends EditorSuggest<EmojiData> {
 			} else {
 				// When user has only typed ":", get popular emojis
 				try {
-					// Search for popular emoji categories
 					const categories = [
-						"people",
-						"nature",
-						"foods",
 						"activity",
-						"places",
-						"objects",
-						"symbols",
+						"animals",
+						"face",
 						"flags",
+						"foods",
+						"frequent",
+						"nature",
+						"objects",
+						"people",
+						"places",
+						"symbols",
+						"travel",
 					];
+
 					const allResults: EmojiData[] = [];
 
 					// Use Promise.all to fetch all categories in parallel for better performance
@@ -384,11 +263,22 @@ class EmojiSuggester extends EditorSuggest<EmojiData> {
 							const categoryResults = await SearchIndex.search(
 								category
 							);
-							if (categoryResults && categoryResults.length > 0) {
-								allResults.push(...categoryResults);
-							}
+							allResults.push(
+								...(categoryResults ?? []) // Sort alphabetically
+									.sort((a: EmojiData, b: EmojiData) =>
+										a.name.localeCompare(b.name)
+									)
+							);
 						})
 					);
+
+					searchResults = allResults
+						// Filter duplicate emojis
+						.filter(
+							(emoji, index, self) =>
+								index ===
+								self.findIndex((t) => t.name === emoji.name)
+						);
 
 					console.log(
 						`Quick Emoji: Retrieved ${searchResults.length} unique emojis`
@@ -403,17 +293,8 @@ class EmojiSuggester extends EditorSuggest<EmojiData> {
 				}
 			}
 
-			// Add search results to the final results
-			if (searchResults && searchResults.length > 0) {
-				// Filter out duplicates that might already be in recent emojis
-				const existingIds = new Set(results.map((emoji) => emoji.id));
-				const filteredSearchResults = searchResults.filter(
-					(emoji) => !existingIds.has(emoji.id)
-				);
-
-				// Add filtered search results to the final results
-				results = [...results, ...filteredSearchResults];
-			}
+			// Add filtered search results to the final results
+			results = [...results, ...searchResults];
 		} catch (error) {
 			console.error("Quick Emoji: Error searching emojis:", error);
 		}
@@ -624,48 +505,5 @@ class QuickEmojiSettingTab extends PluginSettingTab {
 				cls: "setting-item-description",
 			});
 		}
-	}
-}
-
-// Helper function to get emoji data from a native emoji character
-async function getEmojiFromNative(native: string): Promise<EmojiData | null> {
-	try {
-		// Use emoji-mart's getEmojiDataFromNative directly
-		const data = await getEmojiDataFromNative(native);
-
-		if (data) {
-			// Convert the return data to our EmojiData interface
-			return {
-				id: data.id || "",
-				name: data.name || "",
-				native: native, // Use the original emoji to ensure it works
-				unified: data.unified || "",
-				keywords: Array.isArray(data.keywords) ? data.keywords : [],
-				shortcodes: data.shortcodes || "",
-				skins: data.skins || [],
-			};
-		}
-
-		console.warn("No emoji data returned for:", native);
-
-		// Return a basic fallback
-		return {
-			id: `emoji_${Date.now()}`,
-			name: "Emoji",
-			native: native,
-			unified: "",
-			keywords: [],
-		};
-	} catch (e) {
-		console.error("Failed to get emoji data:", e);
-
-		// Return a fallback on error
-		return {
-			id: `emoji_${Date.now()}`,
-			name: "Emoji",
-			native: native,
-			unified: "",
-			keywords: [],
-		};
 	}
 }
