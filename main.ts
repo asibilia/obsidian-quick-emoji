@@ -27,23 +27,20 @@ interface EmojiData {
 	skins?: Array<{ native: string }>;
 }
 
+type SkinSetting = 0 | 1 | 2 | 3 | 4 | 5;
+type ThemeSetting = "auto" | "light" | "dark";
+
 interface QuickEmojiSettings {
-	skin: 1 | 2 | 3 | 4 | 5 | 6;
-	theme: "auto" | "light" | "dark";
+	skin: SkinSetting;
+	theme: ThemeSetting;
 	recentCount: number;
 }
 
 const DEFAULT_SETTINGS: QuickEmojiSettings = {
-	skin: 1,
+	skin: 0,
 	theme: "auto",
 	recentCount: 20,
 };
-
-// Initialize emoji-mart data with the correct configuration
-init({
-	data: emojiData,
-	set: "native",
-});
 
 // Function to trigger an inline emoji search using emoji-mart's SearchIndex
 async function searchEmojis(query: string): Promise<EmojiData[]> {
@@ -63,12 +60,9 @@ export default class QuickEmojiPlugin extends Plugin {
 	async onload() {
 		await this.loadSettings();
 
-		// Load CSS
-		this.loadStyles();
-
 		// First initialize the emoji-mart data to ensure search works correctly
 		try {
-			await init({ data: emojiData });
+			await init({ data: emojiData, set: "native" });
 			console.log("Emoji-mart data initialized successfully");
 		} catch (error) {
 			console.error("Failed to initialize emoji-mart data:", error);
@@ -82,19 +76,6 @@ export default class QuickEmojiPlugin extends Plugin {
 
 		// Add settings tab
 		this.addSettingTab(new QuickEmojiSettingTab(this.app, this));
-
-		// Listen for emoji-mart component load
-		window.addEventListener("emoji-mart:state:change", (e: CustomEvent) => {
-			if (e.detail?.recents?.length > 0) {
-				// Update our recent emojis from the picker
-				this.syncRecentsFromPicker(e.detail.recents);
-			}
-		});
-	}
-
-	onunload() {
-		// Clean up any custom event listeners
-		window.removeEventListener("emoji-mart:state:change", () => {});
 	}
 
 	async loadSettings() {
@@ -136,49 +117,6 @@ export default class QuickEmojiPlugin extends Plugin {
 	clearRecentEmojis() {
 		this.recentEmojis = [];
 		localStorage.removeItem("quick-emoji-recent");
-	}
-
-	loadStyles() {
-		// Add a style element to document head
-		const styleEl = document.createElement("style");
-		styleEl.id = "quick-emoji-styles";
-		document.head.appendChild(styleEl);
-
-		// Load the CSS file
-		this.loadData()
-			.then(() => {
-				return this.app.vault.adapter.read(
-					this.manifest.dir + "/styles.css"
-				);
-			})
-			.then((css) => {
-				styleEl.textContent = css;
-			})
-			.catch((error) => {
-				console.error("Failed to load Quick Emoji styles", error);
-			});
-	}
-
-	// Sync recent emojis from the picker
-	syncRecentsFromPicker(recents: { native: string }[] | string[]) {
-		if (!recents || !Array.isArray(recents)) return;
-
-		// Extract native emojis from the recents list
-		const nativeEmojis = recents
-			.map((item) => (typeof item === "string" ? item : item.native))
-			.filter((emoji) => emoji !== undefined);
-
-		// Only update if we actually have emojis
-		if (nativeEmojis.length > 0) {
-			this.recentEmojis = nativeEmojis.slice(
-				0,
-				this.settings.recentCount
-			);
-			localStorage.setItem(
-				"quick-emoji-recent",
-				JSON.stringify(this.recentEmojis)
-			);
-		}
 	}
 }
 
@@ -264,7 +202,8 @@ class EmojiSuggester extends EditorSuggest<EmojiData> {
 								category
 							);
 							allResults.push(
-								...(categoryResults ?? []) // Sort alphabetically
+								...(categoryResults ?? [])
+									// Sort alphabetically
 									.sort((a: EmojiData, b: EmojiData) =>
 										a.name.localeCompare(b.name)
 									)
@@ -279,15 +218,8 @@ class EmojiSuggester extends EditorSuggest<EmojiData> {
 								index ===
 								self.findIndex((t) => t.name === emoji.name)
 						);
-
-					console.log(
-						`Quick Emoji: Retrieved ${searchResults.length} unique emojis`
-					);
 				} catch (error) {
-					console.error(
-						"Quick Emoji: Failed to get full emoji list:",
-						error
-					);
+					console.error(error);
 					// Fall back to a simpler search
 					searchResults = await SearchIndex.search("");
 				}
@@ -311,29 +243,17 @@ class EmojiSuggester extends EditorSuggest<EmojiData> {
 		// Create emoji icon - use the native emoji directly
 		const emojiEl = suggestionEl.createDiv({ cls: "emoji-icon" });
 
-		// Directly display the native emoji
-		if (emojiItem.native) {
-			emojiEl.setText(emojiItem.native);
-		}
 		// If we have a skin variant, use that
-		else if (
+		if (
 			emojiItem.skins &&
 			emojiItem.skins.length > 0 &&
-			emojiItem.skins[0].native
+			emojiItem.skins[this.plugin.settings.skin] &&
+			emojiItem.skins[this.plugin.settings.skin].native
 		) {
-			emojiEl.setText(emojiItem.skins[0].native);
-		}
-		// Fallback to unified code conversion if needed
-		else if (emojiItem.unified) {
-			try {
-				const unified = emojiItem.unified.split("-");
-				const codePoints = unified.map((u) => parseInt(u, 16));
-				emojiEl.setText(String.fromCodePoint(...codePoints));
-			} catch (e) {
-				console.error("Failed to convert unified code:", e);
-				// Simple fallback - use an emoji symbol that will always work
-				emojiEl.setText("🔣");
-			}
+			// Use the selected skin tone (adjusting index since skins array is 0-based but settings start at 1)
+			emojiEl.setText(emojiItem.skins[this.plugin.settings.skin].native);
+		} else if (emojiItem.native) {
+			emojiEl.setText(emojiItem.native);
 		} else {
 			// Last resort fallback - use an emoji symbol that will always work
 			emojiEl.setText("🔣");
@@ -355,22 +275,14 @@ class EmojiSuggester extends EditorSuggest<EmojiData> {
 		// Get the emoji character to insert - prioritize native emoji
 		let emojiChar = emojiItem.native;
 
-		// If no native emoji available, try to get from skins
-		if (!emojiChar && emojiItem.skins && emojiItem.skins.length > 0) {
-			emojiChar = emojiItem.skins[0].native;
-		}
-
-		// If still no emoji, try to convert from unified code
-		if (!emojiChar && emojiItem.unified) {
-			try {
-				const unified = emojiItem.unified.split("-");
-				const codePoints = unified.map((u) => parseInt(u, 16));
-				emojiChar = String.fromCodePoint(...codePoints);
-			} catch (e) {
-				console.error("Failed to convert unified code to emoji:", e);
-				// Fallback to shortcode if conversion fails
-				emojiChar = emojiItem.shortcodes || `:${emojiItem.name}:`;
-			}
+		// If emoji has skin variants and user has selected a non-default skin, use that
+		if (
+			emojiItem.skins &&
+			emojiItem.skins.length > 0 &&
+			emojiItem.skins[this.plugin.settings.skin] &&
+			emojiItem.skins[this.plugin.settings.skin].native
+		) {
+			emojiChar = emojiItem.skins[this.plugin.settings.skin].native;
 		}
 
 		// Save in recents only if we have a valid emoji character (not a shortcode)
@@ -423,26 +335,17 @@ class QuickEmojiSettingTab extends PluginSettingTab {
 			.setDesc("Choose the default skin tone for emoji")
 			.addDropdown((dropdown) => {
 				dropdown
-					.addOption("1", "Default")
-					.addOption("2", "Light")
-					.addOption("3", "Medium-Light")
-					.addOption("4", "Medium")
-					.addOption("5", "Medium-Dark")
-					.addOption("6", "Dark")
+					.addOption("0", "Default")
+					.addOption("1", "Light")
+					.addOption("2", "Medium-Light")
+					.addOption("3", "Medium")
+					.addOption("4", "Medium-Dark")
+					.addOption("5", "Dark")
 					.setValue(this.plugin.settings.skin.toString())
 					.onChange(async (value) => {
-						// Convert to number and ensure it's a valid skin tone (1-6)
 						const skin = parseInt(value);
-						if (skin >= 1 && skin <= 6) {
-							this.plugin.settings.skin = skin as
-								| 1
-								| 2
-								| 3
-								| 4
-								| 5
-								| 6;
-							await this.plugin.saveSettings();
-						}
+						this.plugin.settings.skin = skin as SkinSetting;
+						await this.plugin.saveSettings();
 					});
 			});
 
