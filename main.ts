@@ -263,7 +263,11 @@ class EmojiSuggester extends EditorSuggest<EmojiData> {
 
 	renderSuggestion(item: EmojiData, el: HTMLElement): void {
 		el.empty();
+
 		const suggestionEl = el.createDiv({ cls: "emoji-suggestion" });
+
+		const lastRecent = this.plugin.recentEmojis.last()?.name;
+		if (lastRecent === item.name) suggestionEl.addClass("recent");
 
 		// Create emoji icon - use the native emoji directly
 		const emojiEl = suggestionEl.createDiv({ cls: "emoji-icon" });

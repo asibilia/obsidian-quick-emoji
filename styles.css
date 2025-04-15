@@ -5,6 +5,10 @@
   padding: 3px;
 }
 
+/* .emoji-suggestion.recent:last-of-type {
+  background-color: red;
+} */
+
 .emoji-icon {
   font-size: 1.4em;
   margin-right: 12px;
