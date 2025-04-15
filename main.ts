@@ -19,11 +19,10 @@ import { init, SearchIndex, getEmojiDataFromNative } from "emoji-mart";
 interface EmojiData {
 	id: string;
 	name: string;
-	native: string;
 	unified: string;
 	keywords: string[];
 	shortcodes?: string;
-	skins?: Array<{ native: string }>;
+	skins: Array<{ native: string }>;
 }
 
 type SkinSetting = 0 | 1 | 2 | 3 | 4 | 5;
@@ -62,8 +61,12 @@ function getActiveEditor(app: App): Editor | null {
 
 // Helper function to get emoji with correct skin tone
 function getEmojiWithSkin(emojiItem: EmojiData, skinTone: SkinSetting): string {
-	// Default to native emoji
-	return emojiItem.skins?.[skinTone]?.native ?? `:${emojiItem.name}:`;
+	// If default skin tone is selected OR emoji doesn't support skin tones, use native emoji
+	if (skinTone === 0 || emojiItem.skins?.length === 1) {
+		return emojiItem.skins?.[0]?.native ?? emojiItem.name;
+	}
+	// Get skin tone variant if it exists, otherwise fall back to native emoji
+	return emojiItem.skins?.[skinTone]?.native ?? emojiItem.name;
 }
 
 // Function to trigger an inline emoji search using emoji-mart's SearchIndex
@@ -79,7 +82,7 @@ async function searchEmojis(query: string): Promise<EmojiData[]> {
 
 export default class QuickEmojiPlugin extends Plugin {
 	settings: QuickEmojiSettings;
-	recentEmojis: string[] = [];
+	recentEmojis: EmojiData[] = [];
 
 	async onload() {
 		await this.loadSettings();
@@ -114,6 +117,8 @@ export default class QuickEmojiPlugin extends Plugin {
 		if (recentData) {
 			try {
 				this.recentEmojis = JSON.parse(recentData);
+				// Clean up any potentially invalid emojis
+				this.cleanupRecentEmojis();
 			} catch (e) {
 				console.error("Failed to parse recent emojis", e);
 				this.recentEmojis = [];
@@ -125,7 +130,7 @@ export default class QuickEmojiPlugin extends Plugin {
 		await this.saveData(this.settings);
 	}
 
-	saveRecentEmoji(emoji: string) {
+	saveRecentEmoji(emoji: EmojiData) {
 		// Add to the beginning, remove duplicates
 		this.recentEmojis = [
 			emoji,
@@ -141,6 +146,24 @@ export default class QuickEmojiPlugin extends Plugin {
 	clearRecentEmojis() {
 		this.recentEmojis = [];
 		localStorage.removeItem("quick-emoji-recent");
+	}
+
+	cleanupRecentEmojis() {
+		// Filter out any null, undefined, or empty string values
+		this.recentEmojis = this.recentEmojis.filter(
+			(emoji) =>
+				emoji &&
+				emoji.name.trim() !== "" &&
+				// Filter out entries that look like text descriptions rather than emojis
+				!emoji.name.match(/^\w+\s+\w+/) &&
+				emoji.name.length < 10
+		);
+
+		// Save the cleaned list
+		localStorage.setItem(
+			"quick-emoji-recent",
+			JSON.stringify(this.recentEmojis)
+		);
 	}
 }
 
@@ -182,13 +205,8 @@ class EmojiSuggester extends EditorSuggest<EmojiData> {
 
 		// Add recent emojis only if there's no search query
 		if (!query && this.plugin.recentEmojis.length > 0) {
-			for (const native of this.plugin.recentEmojis) {
-				try {
-					const emojiData = await getEmojiDataFromNative(native);
-					if (emojiData) results.push(emojiData);
-				} catch (e) {
-					console.error("Failed to get emoji data for", native, e);
-				}
+			for (const emoji of this.plugin.recentEmojis) {
+				results.push(emoji);
 			}
 		}
 
@@ -271,7 +289,7 @@ class EmojiSuggester extends EditorSuggest<EmojiData> {
 
 		// Save in recents only if we have a valid emoji character (not a shortcode)
 		if (emojiChar && !emojiChar.startsWith(":")) {
-			this.plugin.saveRecentEmoji(emojiChar);
+			this.plugin.saveRecentEmoji(item);
 		}
 
 		// Replace the text in the editor
@@ -343,17 +361,25 @@ class QuickEmojiSettingTab extends PluginSettingTab {
 
 			// Display recent emojis
 			for (const emoji of this.plugin.recentEmojis) {
+				// Skip invalid emoji entries
+				if (!emoji || emoji.name.trim() === "") continue;
+
+				const emojiChar = getEmojiWithSkin(
+					emoji,
+					this.plugin.settings.skin
+				);
+
 				const emojiEl = recentContainer.createSpan({
 					cls: "recent-emoji",
-					text: emoji,
-					title: `Insert ${emoji}`,
+					text: emojiChar,
+					title: `Insert ${emoji.name}`,
 				});
 
 				// Add click handler to insert the emoji
 				emojiEl.addEventListener("click", () => {
 					const editor = getActiveEditor(this.app);
 					if (editor) {
-						editor.replaceSelection(emoji);
+						editor.replaceSelection(emojiChar);
 					}
 				});
 			}
