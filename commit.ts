@@ -19,6 +19,7 @@ async function main() {
 			{ value: "build", label: "build" },
 			{ value: "docs", label: "docs" },
 			{ value: "tests", label: "tests" },
+			{ value: "version", label: "version" },
 		],
 	})) as string;
 
