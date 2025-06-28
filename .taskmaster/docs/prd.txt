@@ -1,0 +1,179 @@
+<context>
+# Overview  
+Obsidian Quick Emoji is a mature plugin for Obsidian that enables quick, in-editor emoji insertion. The plugin currently supports emoji search via typing ":", recent emoji history, skin tone customization, and persistent settings. The goal is to enhance the existing functionality, improve performance, add new features, and ensure long-term maintainability.
+
+# Core Features  
+## Current Features (v1.0.4)
+- **Emoji Picker Trigger**: Type ":" to activate emoji suggester in any editor
+- **Search Functionality**: Real-time emoji search using emoji-mart SearchIndex
+- **Recent Emoji History**: Persistent storage of recently used emojis with configurable count (5-50)
+- **Skin Tone Support**: Customizable default skin tone for supported emojis
+- **Settings Management**: Comprehensive settings tab with emoji preview and management
+- **Cross-Platform**: Works on desktop and mobile Obsidian
+
+## Potential Enhancement Areas
+- **Performance Optimization**: Improve search speed and memory usage
+- **UI/UX Improvements**: Enhanced visual design and better user interactions
+- **Additional Features**: Custom emoji categories, favorites, shortcuts
+- **Code Quality**: Refactoring, testing, documentation improvements
+- **Integration Features**: Better Obsidian ecosystem integration
+
+# User Experience  
+## Current User Personas
+- **Note-takers**: Users who want to add emojis to enhance their notes and documents
+- **Content Creators**: Users creating rich, expressive content in Obsidian
+- **Mobile Users**: Users who need efficient emoji input on mobile devices
+
+## Current User Flows
+1. User types ":" in any editor → emoji suggester appears
+2. User types search terms → filtered emoji results shown
+3. User navigates with arrow keys → preview of selected emoji
+4. User presses Enter → emoji inserted at cursor position
+5. Recently used emojis appear at top of suggestions for quick access
+
+## Potential UX Improvements
+- Faster suggestion loading and rendering
+- Better visual feedback and animations
+- Improved mobile experience
+- Customizable keyboard shortcuts
+- Better integration with Obsidian themes
+</context>
+
+<PRD>
+# Technical Architecture  
+## Current Implementation
+- **Core**: TypeScript-based Obsidian plugin using Plugin API
+- **Dependencies**: emoji-mart library for data and search functionality
+- **Storage**: LocalStorage for recent emoji persistence, Obsidian data API for settings
+- **UI**: EditorSuggest API for popup interface and suggestion rendering
+- **Build System**: ESBuild for compilation and bundling
+
+## Potential Technical Enhancements
+- **Performance**: Optimize emoji-mart initialization and search algorithms
+- **Memory Management**: Implement better cleanup and resource management
+- **Error Handling**: Enhanced error recovery and user feedback
+- **Testing Infrastructure**: Unit tests, integration tests, and automated testing
+- **Code Organization**: Modularization and better separation of concerns
+- **Type Safety**: Enhanced TypeScript usage and better type definitions
+
+# Development Roadmap  
+## Phase 0: Plugin Submission Requirements (CRITICAL - Blocking Release)
+- **Naming Compliance**: Remove "Obsidian" from plugin title/headers (reserved for first-party products)
+- **Copyright Update**: Update copyright from Dynalist Inc. to author name and current year  
+- **Manifest Description**: Remove "Obsidian" references from description, follow plugin description guidelines
+- **Logging Cleanup**: Remove unnecessary console.log statements or add development-only checks
+- **Settings UI Compliance**: 
+  - Remove top-level headings from settings tab
+  - Use sentence case for all UI text
+  - Use proper Setting().setHeading() API for section headings instead of manual HTML elements
+- **Code Organization**: Split code into multiple files and move source code to `src/` directory
+- **Documentation**: Update README and other references to comply with naming requirements
+
+## Phase 1: Performance & Stability  
+- Optimize emoji search performance for large datasets
+- Improve plugin loading speed and memory footprint
+- Enhanced error handling and recovery mechanisms
+- Better cleanup on plugin unload and disable
+- Performance monitoring and optimization
+
+## Phase 2: User Experience Enhancements
+- Improved visual design and animations
+- Better mobile experience and touch interactions
+- Customizable keyboard shortcuts and triggers
+- Enhanced settings UI with better organization
+- Improved accessibility features
+
+## Phase 3: Feature Expansion
+- Custom emoji categories and organization
+- Favorites system for frequently used emojis
+- Emoji shortcuts and aliases
+- Better integration with Obsidian themes
+- Export/import of emoji preferences
+
+## Phase 4: Advanced Features
+- Custom emoji support (user-uploaded images)
+- Emoji analytics and usage insights
+- Integration with other Obsidian plugins
+- Advanced search features (tags, descriptions)
+- Collaborative emoji sharing
+
+# Logical Dependency Chain
+## Foundation (Must be built first)
+- Core performance optimizations and stability improvements
+- Enhanced error handling and resource management
+- Testing infrastructure and automated testing setup
+
+## User-Facing Improvements
+- UI/UX enhancements building on stable foundation
+- Mobile experience improvements
+- Settings and configuration enhancements
+
+## Feature Extensions
+- Advanced features building on improved UX foundation
+- Integration features requiring stable core
+- Custom emoji support building on enhanced architecture
+
+# Risks and Mitigations  
+## Technical Challenges
+- **emoji-mart Dependency**: Risk of library updates breaking functionality
+  - Mitigation: Pin versions, implement fallback search, consider alternatives
+- **Performance with Large Datasets**: Potential slowdowns with extensive emoji data
+  - Mitigation: Implement lazy loading, caching, and search optimization
+- **Cross-Platform Compatibility**: Different behavior on desktop vs mobile
+  - Mitigation: Comprehensive testing on all platforms, platform-specific optimizations
+
+## Development Challenges
+- **Maintaining Backward Compatibility**: Risk of breaking existing user configurations
+  - Mitigation: Migration scripts, version detection, gradual deprecation
+- **Testing Coverage**: Difficulty testing UI interactions and edge cases
+  - Mitigation: Automated testing setup, manual testing protocols, user feedback
+
+## User Experience Risks
+- **Breaking Changes**: Risk of disrupting existing user workflows
+  - Mitigation: Feature flags, gradual rollout, user communication
+- **Performance Regression**: New features slowing down existing functionality
+  - Mitigation: Performance benchmarking, optimization-first development
+
+# Appendix  
+## Obsidian Plugin Review Feedback (URGENT)
+The following issues were identified during the Obsidian Community Plugin review process and must be addressed before approval:
+
+### Naming and Branding Issues
+- **Header**: "Obsidian Quick Emoji" should be changed to "Quick Emoji" (Obsidian branding reserved for first-party)
+- **Manifest Description**: Remove "for Obsidian" as context is implied in plugin directory
+- **Follow Guidelines**: Use plugin description guidelines from Obsidian docs
+
+### Code Quality Issues  
+- **Logging**: Remove `console.log('Unloading Quick Emoji plugin')` or add development-only checks
+- **Settings UI**: 
+  - Remove `containerEl.createEl('h2', { text: 'Quick Emoji Settings' })` top-level heading
+  - Use sentence case: "Recent emojis", "Clear recent emojis", "Medium-light", "Medium-dark"
+  - Replace manual headings with `new Setting(containerEl).setName('name here').setHeading()`
+
+### Legal and Organizational
+- **Copyright**: Update from "Copyright (C) 2020-2025 by Dynalist Inc." to author's name and current year
+- **Code Structure**: Move source files to `src/` directory and split into multiple files
+
+### Reference Links
+- Plugin Description Guidelines: https://docs.obsidian.md/Plugins/Releasing/Submission+requirements+for+plugins#Keep+plugin+descriptions+short+and+simple
+
+## Technical Specifications
+- **Obsidian API Version**: Currently targeting 0.15.0+
+- **TypeScript Version**: Latest stable version
+- **Build Tools**: ESBuild for fast compilation
+- **Dependencies**: emoji-mart for emoji data and search
+
+## Research Findings
+- Current plugin has positive user feedback but requests for performance improvements
+- Mobile users particularly interested in better touch interactions
+- Users requesting custom emoji support and better organization features
+- Community interest in integration with other productivity plugins
+
+## Development Priorities
+The roadmap should be prioritized based on:
+1. **CRITICAL**: Plugin submission compliance issues (Phase 0)
+2. User impact and feedback
+3. Technical debt and stability concerns
+4. Development effort required
+5. Maintenance and long-term sustainability
+</PRD> 

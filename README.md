@@ -1,4 +1,4 @@
-# Obsidian Quick Emoji
+# Quick Emoji
 
 A plugin for [Obsidian](https://obsidian.md) that enables quick, in-editor emoji insertion.
 
