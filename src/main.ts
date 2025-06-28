@@ -1,8 +1,6 @@
-import { Notice, Plugin } from 'obsidian'
+import { Plugin } from 'obsidian'
 
-import * as emojiData from '@emoji-mart/data'
-import { type EmojiMartData, type Emoji } from '@emoji-mart/data'
-import { init } from 'emoji-mart'
+import { type Emoji } from '@emoji-mart/data'
 
 import { EmojiSuggester } from './emoji-suggester'
 import {
@@ -20,17 +18,8 @@ export default class QuickEmojiPlugin extends Plugin {
 	async onload() {
 		await this.loadSettings()
 
-		// First initialize the emoji-mart data to ensure search works correctly
-		try {
-			await init({ data: emojiData as EmojiMartData, set: 'native' })
-		} catch (error) {
-			if (process.env.NODE_ENV === 'development') {
-				console.error('Failed to initialize emoji-mart data:', error)
-			}
-			new Notice(
-				'Failed to initialize emoji data. Try reloading Obsidian.'
-			)
-		}
+		// The heavyweight emoji-mart initialization is now lazy-loaded.
+		// The plugin will load almost instantly.
 
 		// Register the emoji suggester
 		this.emojiSuggester = new EmojiSuggester(this)
@@ -38,6 +27,10 @@ export default class QuickEmojiPlugin extends Plugin {
 
 		// Add settings tab
 		this.addSettingTab(new QuickEmojiSettingTab(this.app, this))
+
+		if (process.env.NODE_ENV === 'development') {
+			console.log('Quick Emoji plugin loaded.')
+		}
 	}
 
 	onunload() {

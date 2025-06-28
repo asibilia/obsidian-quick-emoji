@@ -213,13 +213,13 @@
         "id": 11,
         "title": "Phase 1: Lazy-Load Emoji Search Index",
         "description": "Optimize the initialization of the `emoji-mart` SearchIndex to improve plugin load time and reduce initial memory usage.",
-        "details": "Currently, `emoji-mart` data might be loaded synchronously on plugin start. Refactor this to be asynchronous and lazy-loaded. The `SearchIndex` should only be initialized when the user first triggers the emoji suggester, not when the plugin itself loads. Cache the initialized index for subsequent uses within the session. `let searchIndex: SearchIndex | null = null; async function getSearchIndex() { if (!searchIndex) { /* initialize here */ } return searchIndex; }`",
+        "details": "Currently, `emoji-mart` data might be loaded synchronously on plugin start. Refactor this to be asynchronous and lazy-loaded. The `SearchIndex` should only be initialized when the user first triggers the emoji suggester, not when the plugin itself loads. Cache the initialized index for subsequent uses within the session. `let searchIndex: SearchIndex | null = null; async function getSearchIndex() { if (!searchIndex) { /* initialize here */ } return searchIndex; }`\n<info added on 2025-06-28T15:43:08.473Z>\nBased on research, the recommended implementation involves creating a dedicated service to handle the lazy-loading and caching of the emoji index.\n\nArchitectural Refactoring:\nCreate a new file, `src/emoji-service.ts`, to abstract all emoji-related data handling. This service will manage the initialization and caching of the `SearchIndex` using a singleton pattern, ensuring the expensive initialization runs only once per session. This approach improves separation of concerns, making `main.ts` leaner and providing a clear location for future features like aliases or custom emojis.\n\nImplementation Plan:\n1.  Create `src/emoji-service.ts`:\n    -   This module will contain a module-level variable for the cached `SearchIndex` and an `isInitializing` flag to prevent race conditions.\n    -   Export a single async function, `getSearchIndex()`.\n    -   Inside `getSearchIndex()`, use dynamic `import()` to load `emoji-mart` and `@emoji-mart/data` on demand.\n    -   After the dynamic import, call `init()`, cache the `SearchIndex`, and return it. Subsequent calls will return the cached instance.\n    -   Include error handling that shows an Obsidian `Notice` on failure.\n\n2.  Simplify `main.ts`:\n    -   Remove all `emoji-mart` imports and initialization logic from the `onload()` method. The plugin's startup will now be almost instantaneous.\n\n3.  Update `emoji-suggester.ts`:\n    -   Import and call the new `getSearchIndex()` function at the beginning of the `getSuggestions()` method.\n    -   `await` the result before attempting to use the search index. If initialization fails, return an empty array of suggestions.\n\nVerification:\nUse the Obsidian Developer Tools (\"Performance\" tab) to record a performance profile while reloading the app. Compare the flame chart before and after the changes. The execution time for this plugin's `onload` method should be dramatically reduced, confirming that the initialization has been successfully deferred. Functionally test by triggering the suggester (`:`) and verifying that emojis appear correctly after a brief, one-time loading delay.\n</info added on 2025-06-28T15:43:08.473Z>\n<info added on 2025-06-28T15:48:39.744Z>\nThe implementation is now build-ready after resolving several TypeScript type errors, allowing the production build (`npm run build`) to complete successfully.\n\nKey fixes include:\n1.  The `EmojiMartData` import was moved from `emoji-mart` to the `@emoji-mart/data` package.\n2.  The `SearchIndex` type was set to `any` to ensure compatibility with the dynamic import.\n3.  The emoji data import was corrected to use a namespace import instead of a default export.\n\nThe core lazy-loading implementation is complete and ready for functional testing to verify faster plugin startup, correct suggester behavior on first use, and instant subsequent searches from the cached index.\n</info added on 2025-06-28T15:48:39.744Z>",
         "testStrategy": "Use Obsidian's developer tools to measure plugin load time before and after the change. Verify that the emoji suggester still works correctly on its first invocation.",
         "priority": "high",
         "dependencies": [
           1
         ],
-        "status": "pending",
+        "status": "in-progress",
         "subtasks": []
       },
       {
@@ -345,7 +345,7 @@
     ],
     "metadata": {
       "created": "2025-06-28T13:14:28.762Z",
-      "updated": "2025-06-28T14:33:43.984Z",
+      "updated": "2025-06-28T15:44:59.723Z",
       "description": "Tasks for master context"
     }
   }

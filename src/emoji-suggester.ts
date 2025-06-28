@@ -10,9 +10,9 @@ import {
 } from 'obsidian'
 
 import { type Emoji } from '@emoji-mart/data'
-import { SearchIndex } from 'emoji-mart'
 
 import type QuickEmojiPlugin from './main'
+import { getSearchIndex } from './emoji-service'
 import type { SkinSetting } from './settings-tab'
 
 // Emoji category definitions
@@ -54,16 +54,15 @@ function getEmojiWithSkin(emojiItem: Emoji, skinTone: SkinSetting): string {
 	)
 }
 
-// Function to trigger an inline emoji search using emoji-mart's SearchIndex
+// Function to trigger an inline emoji search using the lazy-loaded SearchIndex
 async function searchEmojis(query: string): Promise<Emoji[]> {
 	try {
-		if (!SearchIndex) {
-			if (process.env.NODE_ENV === 'development') {
-				console.error('SearchIndex not initialized')
-			}
+		const searchIndex = await getSearchIndex()
+		if (!searchIndex) {
+			// getSearchIndex already shows a Notice to the user on failure
 			return []
 		}
-		const emojis = await SearchIndex.search(query)
+		const emojis = await searchIndex.search(query)
 		return emojis || []
 	} catch (error) {
 		if (process.env.NODE_ENV === 'development') {
@@ -125,37 +124,40 @@ export class EmojiSuggester extends EditorSuggest<Emoji> {
 				searchResults = await searchEmojis(query)
 			} else {
 				// When user has only typed ":", get popular emojis
-				try {
-					const allResults: Emoji[] = []
+				const searchIndex = await getSearchIndex()
+				if (searchIndex) {
+					try {
+						const allResults: Emoji[] = []
 
-					// Use Promise.all to fetch all categories in parallel for better performance
-					await Promise.all(
-						EMOJI_CATEGORIES.map(async (category) => {
-							const categoryResults =
-								await SearchIndex.search(category)
-							allResults.push(
-								...(categoryResults ?? [])
-									// Sort alphabetically
-									.sort((a: Emoji, b: Emoji) =>
-										a.name.localeCompare(b.name)
-									)
-							)
-						})
-					)
-
-					searchResults = allResults
-						// Filter duplicate emojis
-						.filter(
-							(emoji, index, self) =>
-								index ===
-								self.findIndex((t) => t.name === emoji.name)
+						// Use Promise.all to fetch all categories in parallel for better performance
+						await Promise.all(
+							EMOJI_CATEGORIES.map(async (category) => {
+								const categoryResults =
+									await searchIndex.search(category)
+								allResults.push(
+									...(categoryResults ?? [])
+										// Sort alphabetically
+										.sort((a: Emoji, b: Emoji) =>
+											a.name.localeCompare(b.name)
+										)
+								)
+							})
 						)
-				} catch (error) {
-					if (process.env.NODE_ENV === 'development') {
-						console.error(error)
+
+						searchResults = allResults
+							// Filter duplicate emojis
+							.filter(
+								(emoji, index, self) =>
+									index ===
+									self.findIndex((t) => t.name === emoji.name)
+							)
+					} catch (error) {
+						if (process.env.NODE_ENV === 'development') {
+							console.error(error)
+						}
+						// Fall back to a simpler search
+						searchResults = await searchIndex.search('')
 					}
-					// Fall back to a simpler search
-					searchResults = await SearchIndex.search('')
 				}
 			}
 
