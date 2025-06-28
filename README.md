@@ -11,11 +11,13 @@ A plugin for [Obsidian](https://obsidian.md) that enables quick, in-editor emoji
 
 ## Features
 
+- **Fast & Responsive**: Optimized with lazy loading and debounced search for smooth performance
 - Type `:` to trigger an emoji picker directly in your editor
-- Search for emojis by name or description
+- Search for emojis by name or description with intelligent debouncing
 - Recent emoji history for quick access to frequently used emojis
 - Customize skin tone for supported emojis
 - Configure the number of recent emojis to remember
+- Lightweight startup with on-demand emoji data loading
 
 ## Usage
 
@@ -42,7 +44,7 @@ A plugin for [Obsidian](https://obsidian.md) that enables quick, in-editor emoji
 ### Manual Installation
 
 1. Download the latest release from the GitHub releases page
-2. Extract the files into your vault's `.obsidian/plugins/obsidian-quick-emoji/` directory
+2. Extract the files into your vault's `.obsidian/plugins/quick-emoji/` directory
 3. Reload Obsidian
 4. Enable the plugin in Obsidian settings
 

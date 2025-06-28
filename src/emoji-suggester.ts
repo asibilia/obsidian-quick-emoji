@@ -74,10 +74,24 @@ async function searchEmojis(query: string): Promise<Emoji[]> {
 
 export class EmojiSuggester extends EditorSuggest<Emoji> {
 	plugin: QuickEmojiPlugin
+	private debounceTimer: NodeJS.Timeout | null = null
+	private lastSearchPromise: Promise<Emoji[]> | null = null
 
 	constructor(plugin: QuickEmojiPlugin) {
 		super(plugin.app)
 		this.plugin = plugin
+	}
+
+	/**
+	 * Clean up resources when the suggester is destroyed.
+	 */
+	close(): void {
+		if (this.debounceTimer) {
+			clearTimeout(this.debounceTimer)
+			this.debounceTimer = null
+		}
+		this.lastSearchPromise = null
+		super.close()
 	}
 
 	onTrigger(
@@ -104,8 +118,11 @@ export class EmojiSuggester extends EditorSuggest<Emoji> {
 		}
 	}
 
-	async getSuggestions(context: EditorSuggestContext): Promise<Emoji[]> {
-		const query = context.query || ''
+	/**
+	 * Performs the actual emoji search without debouncing.
+	 * This is the core search logic extracted for reuse.
+	 */
+	private async performSearch(query: string): Promise<Emoji[]> {
 		let results: Emoji[] = []
 
 		// Add recent emojis only if there's no search query
@@ -170,6 +187,42 @@ export class EmojiSuggester extends EditorSuggest<Emoji> {
 		}
 
 		return results
+	}
+
+	async getSuggestions(context: EditorSuggestContext): Promise<Emoji[]> {
+		const query = context.query || ''
+
+		// For empty queries (just ":"), return results immediately to show recent emojis instantly
+		if (!query) {
+			return this.performSearch(query)
+		}
+
+		// For queries with content, use debouncing to prevent excessive search calls
+		return new Promise((resolve) => {
+			// Clear any existing timer
+			if (this.debounceTimer) {
+				clearTimeout(this.debounceTimer)
+			}
+
+			// Set up debounced search with 150ms delay
+			this.debounceTimer = setTimeout(async () => {
+				try {
+					const searchPromise = this.performSearch(query)
+					this.lastSearchPromise = searchPromise
+					const results = await searchPromise
+
+					// Only resolve if this is still the latest search
+					if (this.lastSearchPromise === searchPromise) {
+						resolve(results)
+					}
+				} catch (error) {
+					if (process.env.NODE_ENV === 'development') {
+						console.error('Quick Emoji: Debounced search error:', error)
+					}
+					resolve([])
+				}
+			}, 150)
+		})
 	}
 
 	renderSuggestion(item: Emoji, el: HTMLElement): void {
