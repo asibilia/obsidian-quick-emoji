@@ -2,6 +2,7 @@ import { Plugin } from 'obsidian'
 
 import { type Emoji } from '@emoji-mart/data'
 
+import { clearSearchIndex } from './emoji-service'
 import { EmojiSuggester } from './emoji-suggester'
 import {
 	QuickEmojiSettingTab,
@@ -35,6 +36,24 @@ export default class QuickEmojiPlugin extends Plugin {
 
 	onunload() {
 		// Clean up any resources and references when the plugin is disabled
+
+		// Clean up the emoji suggester if it exists
+		if (this.emojiSuggester) {
+			// The suggester's close() method handles its internal cleanup (timers, promises)
+			this.emojiSuggester.close()
+		}
+
+		// Clear recent emojis array to free memory
+		if (this.recentEmojis) {
+			this.recentEmojis.length = 0
+		}
+
+		// Clear the module-level emoji search index cache
+		clearSearchIndex()
+
+		if (process.env.NODE_ENV === 'development') {
+			console.log('Quick Emoji plugin unloaded and cleaned up.')
+		}
 	}
 
 	async loadSettings() {

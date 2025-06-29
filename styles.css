@@ -1,40 +1,55 @@
-/* Quick Emoji Picker Styles */
+/* Quick Emoji Plugin Styles
+ * Uses Obsidian CSS variables for native theme integration
+ * Focused on essential visual improvements without complex animations
+ */
 .emoji-suggestion {
   display: flex;
   align-items: center;
-  padding: 3px;
+  padding: 8px 12px;
+  cursor: pointer;
+  border-radius: var(--radius-s);
+  color: var(--text-normal);
 }
 
-/* .emoji-suggestion.recent:last-of-type {
-  background-color: red;
-} */
+.emoji-suggestion:hover {
+  background-color: var(--background-modifier-hover);
+}
+
+.emoji-suggestion.is-selected {
+  background-color: var(--interactive-accent);
+  color: var(--text-on-accent);
+}
 
 .emoji-icon {
   font-size: 1.4em;
   margin-right: 12px;
+  flex-shrink: 0;
 }
 
 .emoji-description {
-  font-size: 0.9em;
+  font-size: var(--font-text-size);
+  color: inherit;
 }
 
 /* Recent emojis section in settings */
 .recent-emojis {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 8px;
-  margin-bottom: 16px;
+  gap: var(--size-4-2);
+  margin-top: var(--size-4-2);
+  margin-bottom: var(--size-4-4);
 }
 
 .recent-emoji {
   font-size: 1.4em;
   cursor: pointer;
-  padding: 2.5px;
-  border-radius: 4px;
+  padding: var(--size-2-2);
+  border-radius: var(--radius-s);
   background-color: var(--background-secondary);
+  border: 1px solid var(--background-modifier-border);
 }
 
 .recent-emoji:hover {
   background-color: var(--background-modifier-hover);
+  border-color: var(--background-modifier-border-hover);
 }

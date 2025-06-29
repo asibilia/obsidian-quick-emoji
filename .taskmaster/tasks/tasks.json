@@ -206,7 +206,7 @@
         "dependencies": [
           1
         ],
-        "status": "pending",
+        "status": "deferred",
         "subtasks": []
       },
       {
@@ -245,7 +245,7 @@
         "dependencies": [
           1
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": []
       },
       {
@@ -272,7 +272,7 @@
           7,
           8
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": []
       },
       {
@@ -285,7 +285,7 @@
         "dependencies": [
           15
         ],
-        "status": "pending",
+        "status": "deferred",
         "subtasks": []
       },
       {
@@ -359,7 +359,7 @@
     ],
     "metadata": {
       "created": "2025-06-28T13:14:28.762Z",
-      "updated": "2025-06-29T11:28:29.201Z",
+      "updated": "2025-06-29T12:21:16.320Z",
       "description": "Tasks for master context"
     }
   }
