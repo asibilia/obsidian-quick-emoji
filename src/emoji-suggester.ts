@@ -11,8 +11,8 @@ import {
 
 import { type Emoji } from '@emoji-mart/data'
 
-import type QuickEmojiPlugin from './main'
 import { getSearchIndex } from './emoji-service'
+import type QuickEmojiPlugin from './main'
 import type { SkinSetting } from './settings-tab'
 
 // Emoji category definitions
