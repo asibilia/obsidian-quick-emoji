@@ -1,11 +1,9 @@
 import {
-	App,
 	Editor,
 	EditorPosition,
 	EditorSuggest,
 	EditorSuggestContext,
 	EditorSuggestTriggerInfo,
-	MarkdownView,
 	TFile,
 } from 'obsidian'
 
@@ -13,7 +11,7 @@ import { type Emoji } from '@emoji-mart/data'
 
 import { getSearchIndex } from './emoji-service'
 import type QuickEmojiPlugin from './main'
-import type { SkinSetting } from './settings-tab'
+import { getActiveEditor, getEmojiWithSkin } from './utils'
 
 // Emoji category definitions
 const EMOJI_CATEGORIES = [
@@ -30,29 +28,6 @@ const EMOJI_CATEGORIES = [
 	'symbols',
 	'travel',
 ]
-
-// Helper function to get active editor
-function getActiveEditor(app: App): Editor | null {
-	const activeView = app.workspace.getActiveViewOfType(MarkdownView)
-	return activeView?.editor || null
-}
-
-// Helper function to get emoji with correct skin tone
-function getEmojiWithSkin(emojiItem: Emoji, skinTone: SkinSetting): string {
-	if (!emojiItem) return ''
-
-	// If default skin tone is selected OR emoji doesn't support skin tones, use native emoji
-	if (skinTone === 0 || !emojiItem.skins || emojiItem.skins.length <= 1) {
-		return emojiItem.skins?.[0]?.native ?? emojiItem.name
-	}
-
-	// Get skin tone variant if it exists, otherwise fall back to native emoji
-	return (
-		emojiItem.skins?.[skinTone]?.native ??
-		emojiItem.skins?.[0]?.native ??
-		emojiItem.name
-	)
-}
 
 // Function to trigger an inline emoji search using the lazy-loaded SearchIndex
 async function searchEmojis(query: string): Promise<Emoji[]> {
@@ -217,7 +192,10 @@ export class EmojiSuggester extends EditorSuggest<Emoji> {
 					}
 				} catch (error) {
 					if (process.env.NODE_ENV === 'development') {
-						console.error('Quick Emoji: Debounced search error:', error)
+						console.error(
+							'Quick Emoji: Debounced search error:',
+							error
+						)
 					}
 					resolve([])
 				}

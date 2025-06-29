@@ -1,8 +1,7 @@
-import { App, Editor, MarkdownView, PluginSettingTab, Setting } from 'obsidian'
-
-import { type Emoji } from '@emoji-mart/data'
+import { App, PluginSettingTab, Setting } from 'obsidian'
 
 import type QuickEmojiPlugin from './main'
+import { getActiveEditor, getEmojiWithSkin } from './utils'
 
 export type SkinSetting = 0 | 1 | 2 | 3 | 4 | 5
 
@@ -14,29 +13,6 @@ export interface QuickEmojiSettings {
 export const DEFAULT_SETTINGS: QuickEmojiSettings = {
 	skin: 0,
 	recentCount: 20,
-}
-
-// Helper function to get active editor
-function getActiveEditor(app: App): Editor | null {
-	const activeView = app.workspace.getActiveViewOfType(MarkdownView)
-	return activeView?.editor || null
-}
-
-// Helper function to get emoji with correct skin tone
-function getEmojiWithSkin(emojiItem: Emoji, skinTone: SkinSetting): string {
-	if (!emojiItem) return ''
-
-	// If default skin tone is selected OR emoji doesn't support skin tones, use native emoji
-	if (skinTone === 0 || !emojiItem.skins || emojiItem.skins.length <= 1) {
-		return emojiItem.skins?.[0]?.native ?? emojiItem.name
-	}
-
-	// Get skin tone variant if it exists, otherwise fall back to native emoji
-	return (
-		emojiItem.skins?.[skinTone]?.native ??
-		emojiItem.skins?.[0]?.native ??
-		emojiItem.name
-	)
 }
 
 export class QuickEmojiSettingTab extends PluginSettingTab {

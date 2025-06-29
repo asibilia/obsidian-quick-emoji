@@ -341,11 +341,25 @@
         ],
         "status": "pending",
         "subtasks": []
+      },
+      {
+        "id": 21,
+        "title": "Code Quality: Extract Duplicate Helper Functions to Shared Utility Module",
+        "description": "Create a new `src/utils.ts` module to eliminate duplicate `getActiveEditor()` and `getEmojiWithSkin()` functions that were duplicated between `settings-tab.ts` and `emoji-suggester.ts`. This improves maintainability by centralizing common functionality.",
+        "details": "Create a new file at `src/utils.ts`. Locate the `getActiveEditor()` and `getEmojiWithSkin()` functions, which are currently duplicated in `src/settings-tab.ts` and `src/emoji-suggester.ts`. Move the canonical implementation of both functions into `src/utils.ts` and export them. Then, refactor `settings-tab.ts` and `emoji-suggester.ts` to import these functions from the new utility module, removing the local, duplicated versions. This ensures a single source of truth for these common helpers.",
+        "testStrategy": "Perform a full regression test. Verify that the emoji suggester still triggers and correctly inserts emojis into the editor. Check the settings tab to ensure that any UI elements or actions that rely on these helpers (e.g., emoji previews) continue to function as expected. Specifically, confirm that emojis with skin tone variations render correctly in both the suggester and settings. The goal is to confirm that this refactoring has not introduced any functional regressions.",
+        "status": "done",
+        "dependencies": [
+          6,
+          8
+        ],
+        "priority": "medium",
+        "subtasks": []
       }
     ],
     "metadata": {
       "created": "2025-06-28T13:14:28.762Z",
-      "updated": "2025-06-28T16:04:13.305Z",
+      "updated": "2025-06-29T11:28:29.201Z",
       "description": "Tasks for master context"
     }
   }
