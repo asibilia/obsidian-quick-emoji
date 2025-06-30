@@ -208,7 +208,7 @@ export class EmojiSuggester extends EditorSuggest<Emoji> {
 
 		const suggestionEl = el.createDiv({ cls: 'emoji-suggestion' })
 
-		const lastRecent = this.plugin.recentEmojis.last()?.name
+		const lastRecent = this.plugin.recentEmojis.at(-1)?.name
 		if (lastRecent === item.name) suggestionEl.addClass('recent')
 
 		// Create emoji icon - use the native emoji directly

@@ -6,6 +6,9 @@ import type { EmojiMartData } from '@emoji-mart/data'
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 let searchIndex: any | null = null
 let isInitializing = false
+// Queue for resolvers waiting for initialization to complete
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const pendingResolvers: Array<(value: any) => void> = []
 
 /**
  * Lazily initializes and returns the emoji-mart SearchIndex.
@@ -25,12 +28,7 @@ export async function getSearchIndex(): Promise<any | null> {
 	// before the first call resolves.
 	if (isInitializing) {
 		return new Promise((resolve) => {
-			const interval = setInterval(() => {
-				if (!isInitializing) {
-					clearInterval(interval)
-					resolve(searchIndex)
-				}
-			}, 50)
+			pendingResolvers.push(resolve)
 		})
 	}
 
@@ -65,6 +63,14 @@ export async function getSearchIndex(): Promise<any | null> {
 		return null
 	} finally {
 		isInitializing = false
+		// Resolve all pending promises with the final result
+		const result = searchIndex
+		while (pendingResolvers.length > 0) {
+			const resolve = pendingResolvers.shift()
+			if (resolve) {
+				resolve(result)
+			}
+		}
 	}
 }
 
