@@ -1,4 +1,4 @@
-import { Plugin } from 'obsidian'
+import { Plugin, Notice } from 'obsidian'
 
 import { type Emoji } from '@emoji-mart/data'
 
@@ -14,7 +14,7 @@ export default class QuickEmojiPlugin extends Plugin {
 	settings: QuickEmojiSettings
 	recentEmojis: Emoji[] = []
 	emojiSuggester: EmojiSuggester
-	storageKey = 'obsidian-quick-emoji-recent' // Namespaced storage key
+	storageKey = 'quick-emoji-recent' // Namespaced storage key
 
 	async onload() {
 		await this.loadSettings()
@@ -57,11 +57,19 @@ export default class QuickEmojiPlugin extends Plugin {
 	}
 
 	async loadSettings() {
-		this.settings = Object.assign(
-			{},
-			DEFAULT_SETTINGS,
-			await this.loadData()
-		)
+		try {
+			this.settings = Object.assign(
+				{},
+				DEFAULT_SETTINGS,
+				await this.loadData()
+			)
+		} catch (e) {
+			if (process.env.NODE_ENV === 'development') {
+				console.error('Failed to load plugin settings', e)
+			}
+			new Notice('Quick Emoji: Failed to load plugin settings. Using defaults.')
+			this.settings = Object.assign({}, DEFAULT_SETTINGS)
+		}
 
 		// Load recent emojis from local storage
 		try {
@@ -83,7 +91,14 @@ export default class QuickEmojiPlugin extends Plugin {
 	}
 
 	async saveSettings() {
-		await this.saveData(this.settings)
+		try {
+			await this.saveData(this.settings)
+		} catch (e) {
+			if (process.env.NODE_ENV === 'development') {
+				console.error('Failed to save plugin settings', e)
+			}
+			new Notice('Quick Emoji: Failed to save plugin settings. Changes may be lost.')
+		}
 	}
 
 	saveRecentEmoji(emoji: Emoji) {
