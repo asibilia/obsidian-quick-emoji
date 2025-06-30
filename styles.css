@@ -2,21 +2,13 @@
  * Uses Obsidian CSS variables for native theme integration
  * Focused on essential visual improvements without complex animations
  */
-.emoji-suggestion {
+ .emoji-suggestion {
 	display: flex;
 	align-items: center;
-	padding: 8px 12px;
-	cursor: pointer;
-	border-radius: var(--radius-s);
 	color: var(--text-normal);
 }
 
-.emoji-suggestion:hover {
-	background-color: var(--background-modifier-hover);
-}
-
 .emoji-suggestion.is-selected {
-	background-color: var(--interactive-accent);
 	color: var(--text-on-accent);
 }
 
@@ -56,7 +48,6 @@
 
 /* Favorites functionality */
 .emoji-suggestion .emoji-star {
-	margin-left: auto;
 	cursor: pointer;
 	padding: 4px;
 	border-radius: var(--radius-s);
@@ -67,23 +58,37 @@
 	transition: opacity 0.2s ease;
 }
 
-.emoji-suggestion:hover .emoji-star {
-	opacity: 1;
-}
-
-.emoji-suggestion .emoji-star:hover {
-	background-color: var(--background-modifier-hover);
-	color: var(--text-normal);
-}
-
 .emoji-suggestion .emoji-star.favorited {
 	color: var(--color-yellow);
 	opacity: 1;
 }
 
-.emoji-suggestion.favorite {
-	border-left: 3px solid var(--color-yellow);
-	background-color: var(--background-secondary);
+.emoji-suggestion.search-result .emoji-star {
+	color: var(--text-muted) !important;
+}
+
+.emoji-suggestion .emoji-star:hover {
+	opacity: 1;
+}
+
+/* Recent emoji indicator */
+.emoji-suggestion .emoji-recent {
+	padding: 4px;
+	color: var(--text-muted);
+	font-size: 1.1em;
+	opacity: 0.6;
+	user-select: none;
+}
+
+.emoji-suggestion .emoji-recent::before {
+	content: "↻";
+}
+
+/* Icons container for proper layout */
+.emoji-suggestion .emoji-icons {
+	display: flex;
+	margin-left: auto;
+	gap: 4px;
 }
 
 /* Favorite emojis section in settings */
