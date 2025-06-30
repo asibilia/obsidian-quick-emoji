@@ -1,0 +1,139 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# Repository Style Guide
+
+This rule enforces consistent naming conventions and coding standards across the entire repository.
+
+## **File Naming Conventions**
+
+### **Kebab-Case for All Files**
+- **All files MUST use kebab-case naming** (lowercase with hyphens)
+- **Examples:**
+  ```
+  ✅ DO: 
+  - settings-tab.ts
+  - emoji-suggester.ts  
+  - quick-emoji-plugin.ts
+  - user-preferences.json
+  - build-config.mjs
+  
+  ❌ DON'T:
+  - settingsTab.ts (camelCase)
+  - EmojiSuggester.ts (PascalCase) 
+  - Settings_Tab.ts (snake_case)
+  - SETTINGS.TS (UPPERCASE)
+  ```
+
+### **File Extensions**
+- TypeScript source files: `.ts`
+- Configuration files: `.json`, `.mjs`, `.yaml`
+- Documentation: `.md`
+- Styles: `.css`
+
+## **Directory Structure**
+
+### **Source Code Organization**
+- **All TypeScript source files** → `src/` directory
+- **Configuration files** → Project root
+- **Documentation** → Project root or `docs/`
+- **Assets/Styles** → Project root
+
+### **Module Organization**
+- **Split large files** into focused, single-responsibility modules
+- **Use clear, descriptive file names** that indicate purpose
+- **Group related functionality** into cohesive modules
+
+## **Code Structure Standards**
+
+### **Import/Export Patterns**
+```typescript
+// ✅ DO: Use relative imports for local modules
+import { QuickEmojiSettingTab } from './settings-tab'
+import { EmojiSuggester } from './emoji-suggester'
+
+// ✅ DO: Group imports logically
+import { App, Plugin, TFile } from 'obsidian'
+import { type Emoji } from '@emoji-mart/data'
+
+// ✅ DO: Export types and interfaces explicitly
+export type SkinSetting = 0 | 1 | 2 | 3 | 4 | 5
+export interface QuickEmojiSettings { ... }
+```
+
+### **Class and Function Naming**
+- **Classes:** PascalCase (`QuickEmojiPlugin`, `EmojiSuggester`)
+- **Functions:** camelCase (`getActiveEditor`, `searchEmojis`)
+- **Constants:** UPPER_SNAKE_CASE (`DEFAULT_SETTINGS`, `EMOJI_CATEGORIES`)
+- **Variables:** camelCase (`recentEmojis`, `skinTone`)
+
+## **Migration Guidelines**
+
+### **When Refactoring Existing Files**
+1. **Rename files** from camelCase → kebab-case
+2. **Update all import statements** to reflect new file names
+3. **Update build configuration** (esbuild, tsconfig) with new paths
+4. **Test thoroughly** after file renames
+
+### **For New Files**
+- **Always use kebab-case** from the start
+- **Follow the src/ directory structure**
+- **Use descriptive names** that clearly indicate file purpose
+
+## **Build Configuration Compliance**
+
+### **Update Configuration Files**
+- **esbuild.config.mjs:** Entry points must reflect kebab-case names
+- **tsconfig.json:** Include patterns must match kebab-case structure
+- **package.json:** Scripts and references updated accordingly
+
+### **Example Migration**
+```javascript
+// Before
+entryPoints: ['src/settingsTab.ts']
+
+// After  
+entryPoints: ['src/settings-tab.ts']
+```
+
+## **Documentation Standards**
+
+### **README and Documentation**
+- **Use kebab-case** for documentation file names
+- **Reference files** using their kebab-case names
+- **Update examples** to show proper naming conventions
+
+### **Comments and Code Documentation**
+- **File headers** should reflect the kebab-case file name
+- **Module descriptions** should be clear and descriptive
+- **Export documentation** should match file naming patterns
+
+## **Quality Assurance**
+
+### **Pre-commit Checks**
+- Verify all new files use kebab-case naming
+- Check that imports reference correct kebab-case file names
+- Ensure build configuration is updated for any file renames
+
+### **Refactoring Checklist**
+- [ ] File renamed to kebab-case
+- [ ] All imports updated
+- [ ] Build config updated
+- [ ] Tests pass
+- [ ] No broken references
+
+## **Exceptions**
+
+### **Generated Files**
+- Generated files (like `main.js`) may not follow kebab-case if required by external tools
+- Configuration files may use tool-specific naming (e.g., `tsconfig.json`)
+
+### **Third-Party Dependencies**
+- External library file names are not subject to this rule
+- Only project source files must follow kebab-case convention
+
+---
+
+**Note:** This style guide ensures consistency and readability across the entire codebase. When in doubt, choose the more explicit, kebab-case option.

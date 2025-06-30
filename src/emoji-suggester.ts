@@ -1,0 +1,410 @@
+import {
+	Editor,
+	EditorPosition,
+	EditorSuggest,
+	EditorSuggestContext,
+	EditorSuggestTriggerInfo,
+	TFile,
+} from 'obsidian'
+
+import { type Emoji } from '@emoji-mart/data'
+
+import { getSearchIndex } from './emoji-service'
+import type QuickEmojiPlugin from './main'
+import { getActiveEditor, getEmojiWithSkin } from './utils'
+
+// Emoji category definitions
+const EMOJI_CATEGORIES = [
+	'activity',
+	'animals',
+	'face',
+	'flags',
+	'foods',
+	'frequent',
+	'nature',
+	'objects',
+	'people',
+	'places',
+	'symbols',
+	'travel',
+]
+
+type EmojiSuggestion = {
+	emoji: Emoji
+	isRecent: boolean
+	isFavorite: boolean
+	isSearchResult: boolean
+}
+
+// Function to trigger an inline emoji search using the lazy-loaded SearchIndex
+async function searchEmojis(query: string): Promise<Emoji[]> {
+	try {
+		const searchIndex = await getSearchIndex()
+		if (!searchIndex) {
+			// getSearchIndex already shows a Notice to the user on failure
+			return []
+		}
+		const emojis = await searchIndex.search(query)
+		return emojis || []
+	} catch (error) {
+		if (process.env.NODE_ENV === 'development') {
+			console.error('Failed to search emojis:', error)
+		}
+		return []
+	}
+}
+
+export class EmojiSuggester extends EditorSuggest<EmojiSuggestion> {
+	plugin: QuickEmojiPlugin
+	private debounceTimer: NodeJS.Timeout | null = null
+	private lastSearchPromise: Promise<EmojiSuggestion[]> | null = null
+
+	constructor(plugin: QuickEmojiPlugin) {
+		super(plugin.app)
+		this.plugin = plugin
+	}
+
+	/**
+	 * Clean up resources when the suggester is destroyed.
+	 */
+	close(): void {
+		if (this.debounceTimer) {
+			clearTimeout(this.debounceTimer)
+			this.debounceTimer = null
+		}
+		this.lastSearchPromise = null
+		super.close()
+	}
+
+	onTrigger(
+		cursor: EditorPosition,
+		editor: Editor,
+		_file: TFile
+	): EditorSuggestTriggerInfo | null {
+		// Check if we're in the middle of a word
+		const line = editor.getLine(cursor.line)
+		const subString = line.substring(0, cursor.ch)
+
+		// Find the last colon before cursor - match even if it's just a single colon
+		const colonMatch = subString.match(/:([\w]*)$/)
+		if (!colonMatch) return null
+
+		// Trigger the emoji suggester
+		return {
+			start: {
+				line: cursor.line,
+				ch: colonMatch.index || 0,
+			},
+			end: cursor,
+			query: colonMatch[1] || '',
+		}
+	}
+
+	/**
+	 * Performs the actual emoji search without debouncing.
+	 * This is the core search logic extracted for reuse.
+	 */
+	private async performSearch(query: string): Promise<EmojiSuggestion[]> {
+		let results: EmojiSuggestion[] = []
+
+		// Add favorite emojis first (always shown at top)
+		if (this.plugin.settings.favorites.length > 0) {
+			const searchIndex = await getSearchIndex()
+			if (searchIndex) {
+				for (const favoriteId of this.plugin.settings.favorites) {
+					try {
+						// Search for the specific favorite emoji
+						const favoriteResults =
+							await searchIndex.search(favoriteId)
+						if (favoriteResults && favoriteResults.length > 0) {
+							// Find exact match by ID if possible, otherwise take first result
+							const exactMatch = favoriteResults.find(
+								(emoji: Emoji) =>
+									emoji.id === favoriteId ||
+									emoji.name === favoriteId
+							)
+							const emoji = exactMatch || favoriteResults[0]
+							results.push({
+								emoji,
+								isRecent: this.plugin.recentEmojis.some(
+									(recent) => recent.name === emoji.name
+								),
+								isFavorite: true,
+								isSearchResult: false,
+							})
+						}
+					} catch (error) {
+						if (process.env.NODE_ENV === 'development') {
+							console.error(
+								'Failed to load favorite emoji:',
+								favoriteId,
+								error
+							)
+						}
+					}
+				}
+			}
+		}
+
+		// Add recent emojis only if there's no search query (and they're not already favorites)
+		if (!query && this.plugin.recentEmojis.length > 0) {
+			for (const emoji of this.plugin.recentEmojis) {
+				// Don't duplicate favorites in recent section
+				if (!this.plugin.settings.favorites.includes(emoji.id)) {
+					results.push({
+						emoji,
+						isRecent: true,
+						isFavorite: false,
+						isSearchResult: false,
+					})
+				}
+			}
+		}
+
+		try {
+			// Get emoji results - use appropriate search based on query
+			let searchResults: Emoji[] = []
+
+			if (query) {
+				// If user has typed something, do a specific search
+				searchResults = await searchEmojis(query)
+			} else {
+				// When user has only typed ":", get popular emojis
+				const searchIndex = await getSearchIndex()
+				if (searchIndex) {
+					try {
+						const allResults: Emoji[] = []
+
+						// Use Promise.all to fetch all categories in parallel for better performance
+						await Promise.all(
+							EMOJI_CATEGORIES.map(async (category) => {
+								const categoryResults =
+									await searchIndex.search(category)
+								allResults.push(
+									...(categoryResults ?? [])
+										// Sort alphabetically
+										.sort((a: Emoji, b: Emoji) =>
+											a.name.localeCompare(b.name)
+										)
+								)
+							})
+						)
+
+						searchResults = allResults
+							// Filter duplicate emojis
+							.filter(
+								(emoji, index, self) =>
+									index ===
+									self.findIndex((t) => t.name === emoji.name)
+							)
+					} catch (error) {
+						if (process.env.NODE_ENV === 'development') {
+							console.error(error)
+						}
+						// Fall back to a simpler search
+						searchResults = await searchIndex.search('')
+					}
+				}
+			}
+
+			// Convert search results to EmojiSuggestion objects and add to final results
+			const searchSuggestions: EmojiSuggestion[] = searchResults.map(
+				(emoji) => ({
+					emoji,
+					isRecent: this.plugin.recentEmojis.some(
+						(recent) => recent.name === emoji.name
+					),
+					isFavorite: this.plugin.settings.favorites.includes(
+						emoji.id
+					),
+					isSearchResult: true,
+				})
+			)
+
+			results = [...results, ...searchSuggestions]
+		} catch (error) {
+			if (process.env.NODE_ENV === 'development') {
+				console.error('Quick Emoji: Error searching emojis:', error)
+			}
+		}
+
+		return results
+	}
+
+	async getSuggestions(
+		context: EditorSuggestContext
+	): Promise<EmojiSuggestion[]> {
+		const query = context.query || ''
+
+		// For empty queries (just ":"), return results immediately to show recent emojis instantly
+		if (!query) return this.performSearch(query)
+
+		// For queries with content, use debouncing to prevent excessive search calls
+		return new Promise((resolve) => {
+			// Clear any existing timer
+			if (this.debounceTimer) {
+				clearTimeout(this.debounceTimer)
+			}
+
+			// Set up debounced search with 150ms delay
+			this.debounceTimer = setTimeout(async () => {
+				try {
+					const searchPromise = this.performSearch(query)
+					this.lastSearchPromise = searchPromise
+					const results = await searchPromise
+
+					// Only resolve if this is still the latest search
+					if (this.lastSearchPromise === searchPromise) {
+						resolve(results)
+					}
+				} catch (error) {
+					if (process.env.NODE_ENV === 'development') {
+						console.error(
+							'Quick Emoji: Debounced search error:',
+							error
+						)
+					}
+					resolve([])
+				}
+			}, 150)
+		})
+	}
+
+	renderSuggestion(suggestion: EmojiSuggestion, el: HTMLElement): void {
+		el.empty()
+
+		const suggestionEl = el.createDiv({ cls: 'emoji-suggestion' })
+		const { emoji, isRecent, isFavorite, isSearchResult } = suggestion
+
+		// Add appropriate classes based on the suggestion type
+		if (isRecent) suggestionEl.addClass('recent')
+		if (isFavorite) suggestionEl.addClass('favorite')
+		if (isSearchResult) suggestionEl.addClass('search-result')
+
+		// Create emoji icon - use the native emoji directly
+		const emojiEl = suggestionEl.createDiv({ cls: 'emoji-icon' })
+
+		// Get emoji with proper skin tone
+		const emojiChar = getEmojiWithSkin(emoji, this.plugin.settings.skin)
+
+		// Set the emoji text
+		emojiEl.setText(emojiChar)
+
+		// Create description
+		const descEl = suggestionEl.createDiv({ cls: 'emoji-description' })
+		descEl.setText(emoji.name)
+
+		// Create icons container
+		const iconsEl = suggestionEl.createDiv({ cls: 'emoji-icons' })
+
+		// For recent emojis that aren't favorited, show both recent indicator and favorite star
+		// For all others, show just the appropriate icon
+		if (isRecent && !isFavorite && !isSearchResult) {
+			// Create recent indicator (rewind icon)
+			iconsEl.createDiv({
+				cls: 'emoji-recent',
+				title: 'Recently used',
+			})
+
+			// Also create favorite star button for recent emojis
+			const starEl = iconsEl.createDiv({
+				cls: 'emoji-star',
+				title: 'Add to favorites',
+			})
+			starEl.setText('☆')
+
+			// Add click handler for star
+			starEl.addEventListener('click', async (e) => {
+				e.preventDefault()
+				e.stopPropagation()
+
+				// Check if already favorited to prevent duplicates
+				if (!this.plugin.settings.favorites.includes(emoji.id)) {
+					// Add to favorites
+					this.plugin.settings.favorites = [
+						...this.plugin.settings.favorites,
+						emoji.id,
+					]
+
+					// Save settings
+					await this.plugin.saveSettings()
+
+					// Update the visual state
+					starEl.setText('★')
+					starEl.title = 'Remove from favorites'
+					starEl.toggleClass('favorited', true)
+					suggestionEl.toggleClass('favorite', true)
+				}
+			})
+		} else {
+			// Create favorite star button
+			const starEl = iconsEl.createDiv({
+				cls: `emoji-star ${isFavorite ? 'favorited' : ''}`,
+				title: isFavorite
+					? 'Remove from favorites'
+					: 'Add to favorites',
+			})
+			starEl.setText(isFavorite ? '★' : '☆')
+
+			// Add click handler for star (prevent event propagation to avoid selecting the emoji)
+			starEl.addEventListener('click', async (e) => {
+				e.preventDefault()
+				e.stopPropagation()
+
+				const favorites = this.plugin.settings.favorites
+				const isCurrentlyFavorited = favorites.includes(emoji.id)
+
+				if (isCurrentlyFavorited) {
+					// Remove from favorites
+					this.plugin.settings.favorites = favorites.filter(
+						(id) => id !== emoji.id
+					)
+				} else {
+					// Add to favorites (check for duplicates)
+					if (!favorites.includes(emoji.id)) {
+						this.plugin.settings.favorites = [
+							...favorites,
+							emoji.id,
+						]
+					}
+				}
+
+				// Save settings
+				await this.plugin.saveSettings()
+
+				// Update the visual state based on current state
+				const newIsFavorited = this.plugin.settings.favorites.includes(
+					emoji.id
+				)
+				starEl.setText(newIsFavorited ? '★' : '☆')
+				starEl.title = newIsFavorited
+					? 'Remove from favorites'
+					: 'Add to favorites'
+				starEl.toggleClass('favorited', newIsFavorited)
+				suggestionEl.toggleClass('favorite', newIsFavorited)
+			})
+		}
+	}
+
+	selectSuggestion(
+		suggestion: EmojiSuggestion,
+		_evt: MouseEvent | KeyboardEvent
+	): void {
+		// Get the editor
+		const editor = getActiveEditor(this.app)
+		if (!editor) return
+
+		const { emoji } = suggestion
+
+		// Get emoji with proper skin tone
+		const emojiChar = getEmojiWithSkin(emoji, this.plugin.settings.skin)
+
+		// Save in recents only if we have a valid emoji character (not a shortcode)
+		if (emojiChar && !emojiChar.startsWith(':')) {
+			this.plugin.saveRecentEmoji(emoji)
+		}
+
+		// Replace the text in the editor
+		editor.replaceRange(emojiChar, this.context!.start, this.context!.end)
+	}
+}

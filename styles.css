@@ -1,40 +1,126 @@
-/* Quick Emoji Picker Styles */
-.emoji-suggestion {
-  display: flex;
-  align-items: center;
-  padding: 3px;
+/* Quick Emoji Plugin Styles
+ * Uses Obsidian CSS variables for native theme integration
+ * Focused on essential visual improvements without complex animations
+ */
+ .emoji-suggestion {
+	display: flex;
+	align-items: center;
+	color: var(--text-normal);
 }
 
-/* .emoji-suggestion.recent:last-of-type {
-  background-color: red;
-} */
+.emoji-suggestion.is-selected {
+	color: var(--text-on-accent);
+}
 
 .emoji-icon {
-  font-size: 1.4em;
-  margin-right: 12px;
+	font-size: 1.4em;
+	margin-right: 12px;
+	flex-shrink: 0;
 }
 
 .emoji-description {
-  font-size: 0.9em;
+	font-size: var(--font-text-size);
+	color: inherit;
 }
 
 /* Recent emojis section in settings */
 .recent-emojis {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 8px;
-  margin-bottom: 16px;
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--size-4-2);
+	margin-top: var(--size-4-2);
+	margin-bottom: var(--size-4-4);
 }
 
 .recent-emoji {
-  font-size: 1.4em;
-  cursor: pointer;
-  padding: 2.5px;
-  border-radius: 4px;
-  background-color: var(--background-secondary);
+	font-size: 1.4em;
+	cursor: pointer;
+	padding: var(--size-2-2);
+	border-radius: var(--radius-s);
+	background-color: var(--background-secondary);
+	border: 1px solid var(--background-modifier-border);
 }
 
 .recent-emoji:hover {
-  background-color: var(--background-modifier-hover);
+	background-color: var(--background-modifier-hover);
+	border-color: var(--background-modifier-border-hover);
+}
+
+/* Favorites functionality */
+.emoji-suggestion .emoji-star {
+	cursor: pointer;
+	padding: 4px;
+	border-radius: var(--radius-s);
+	color: var(--text-muted);
+	font-size: 1.2em;
+	user-select: none;
+	opacity: 0.6;
+	transition: opacity 0.2s ease;
+}
+
+.emoji-suggestion .emoji-star.favorited {
+	color: var(--color-yellow);
+	opacity: 1;
+}
+
+.emoji-suggestion.search-result .emoji-star {
+	color: var(--text-muted) !important;
+}
+
+.emoji-suggestion .emoji-star:hover {
+	opacity: 1;
+}
+
+/* Recent emoji indicator */
+.emoji-suggestion .emoji-recent {
+	padding: 4px;
+	color: var(--text-muted);
+	font-size: 1.1em;
+	opacity: 0.6;
+	user-select: none;
+}
+
+.emoji-suggestion .emoji-recent::before {
+	content: "↻";
+}
+
+/* Icons container for proper layout */
+.emoji-suggestion .emoji-icons {
+	display: flex;
+	margin-left: auto;
+	gap: 4px;
+}
+
+/* Favorite emojis section in settings */
+.favorite-emojis {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--size-4-2);
+	margin-top: var(--size-4-2);
+	margin-bottom: var(--size-4-4);
+}
+
+.favorite-emoji {
+	font-size: 1.4em;
+	cursor: pointer;
+	padding: var(--size-2-2);
+	border-radius: var(--radius-s);
+	background-color: var(--background-secondary);
+	border: 1px solid var(--color-yellow);
+	position: relative;
+}
+
+.favorite-emoji:hover {
+	background-color: var(--background-modifier-hover);
+	border-color: var(--color-yellow-rgb);
+	transform: translateY(-1px);
+}
+
+.favorite-emoji::after {
+	content: "★";
+	position: absolute;
+	top: -2px;
+	right: -2px;
+	font-size: 0.8em;
+	color: var(--color-yellow);
 }

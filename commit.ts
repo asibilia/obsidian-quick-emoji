@@ -20,6 +20,7 @@ async function main() {
 			{ value: "docs", label: "docs" },
 			{ value: "tests", label: "tests" },
 			{ value: "version", label: "version" },
+			{ value: "tasks", label: "tasks" },
 		],
 	})) as string;
 
