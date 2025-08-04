@@ -129,7 +129,7 @@ export default class QuickEmojiPlugin extends Plugin {
 	clearRecentEmojis() {
 		this.recentEmojis = []
 		try {
-			this.app.saveLocalStorage(this.storageKey, '')
+			this.app.saveLocalStorage(this.storageKey, null)
 		} catch (e) {
 			if (process.env.NODE_ENV === 'development') {
 				console.error(
