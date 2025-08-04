@@ -56,7 +56,7 @@ async function searchEmojis(query: string): Promise<Emoji[]> {
 
 export class EmojiSuggester extends EditorSuggest<EmojiSuggestion> {
 	plugin: QuickEmojiPlugin
-	private debounceTimer: NodeJS.Timeout | null = null
+	private debounceTimer: number | null = null
 	private lastSearchPromise: Promise<EmojiSuggestion[]> | null = null
 
 	constructor(plugin: QuickEmojiPlugin) {
@@ -69,7 +69,7 @@ export class EmojiSuggester extends EditorSuggest<EmojiSuggestion> {
 	 */
 	close(): void {
 		if (this.debounceTimer) {
-			clearTimeout(this.debounceTimer)
+			window.clearTimeout(this.debounceTimer)
 			this.debounceTimer = null
 		}
 		this.lastSearchPromise = null
@@ -243,11 +243,11 @@ export class EmojiSuggester extends EditorSuggest<EmojiSuggestion> {
 		return new Promise((resolve) => {
 			// Clear any existing timer
 			if (this.debounceTimer) {
-				clearTimeout(this.debounceTimer)
+				window.clearTimeout(this.debounceTimer)
 			}
 
 			// Set up debounced search with 150ms delay
-			this.debounceTimer = setTimeout(async () => {
+			this.debounceTimer = window.setTimeout(async () => {
 				try {
 					const searchPromise = this.performSearch(query)
 					this.lastSearchPromise = searchPromise

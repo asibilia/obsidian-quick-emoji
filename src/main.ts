@@ -67,13 +67,15 @@ export default class QuickEmojiPlugin extends Plugin {
 			if (process.env.NODE_ENV === 'development') {
 				console.error('Failed to load plugin settings', e)
 			}
-			new Notice('Quick Emoji: Failed to load plugin settings. Using defaults.')
+			new Notice(
+				'Quick Emoji: Failed to load plugin settings. Using defaults.'
+			)
 			this.settings = Object.assign({}, DEFAULT_SETTINGS)
 		}
 
 		// Load recent emojis from local storage
 		try {
-			const recentData = localStorage.getItem(this.storageKey)
+			const recentData = this.app.loadLocalStorage(this.storageKey)
 			if (recentData) {
 				this.recentEmojis = JSON.parse(recentData)
 				// Clean up any potentially invalid emojis
@@ -97,7 +99,9 @@ export default class QuickEmojiPlugin extends Plugin {
 			if (process.env.NODE_ENV === 'development') {
 				console.error('Failed to save plugin settings', e)
 			}
-			new Notice('Quick Emoji: Failed to save plugin settings. Changes may be lost.')
+			new Notice(
+				'Quick Emoji: Failed to save plugin settings. Changes may be lost.'
+			)
 		}
 	}
 
@@ -111,7 +115,7 @@ export default class QuickEmojiPlugin extends Plugin {
 		].slice(0, this.settings.recentCount)
 
 		try {
-			localStorage.setItem(
+			this.app.saveLocalStorage(
 				this.storageKey,
 				JSON.stringify(this.recentEmojis)
 			)
@@ -125,7 +129,7 @@ export default class QuickEmojiPlugin extends Plugin {
 	clearRecentEmojis() {
 		this.recentEmojis = []
 		try {
-			localStorage.removeItem(this.storageKey)
+			this.app.saveLocalStorage(this.storageKey, '')
 		} catch (e) {
 			if (process.env.NODE_ENV === 'development') {
 				console.error(
@@ -149,7 +153,7 @@ export default class QuickEmojiPlugin extends Plugin {
 
 		// Save the cleaned list
 		try {
-			localStorage.setItem(
+			this.app.saveLocalStorage(
 				this.storageKey,
 				JSON.stringify(this.recentEmojis)
 			)
