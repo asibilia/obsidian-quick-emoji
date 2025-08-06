@@ -29,6 +29,9 @@ const EMOJI_CATEGORIES = [
 	'travel',
 ]
 
+// Regex for checking trailing whitespace (extracted to avoid recompilation)
+const TRAILING_WHITESPACE_REGEX = /\s$/
+
 type EmojiSuggestion = {
 	emoji: Emoji
 	isRecent: boolean
@@ -81,7 +84,6 @@ export class EmojiSuggester extends EditorSuggest<EmojiSuggestion> {
 		editor: Editor,
 		_file: TFile
 	): EditorSuggestTriggerInfo | null {
-		// Check if we're in the middle of a word
 		const line = editor.getLine(cursor.line)
 		const subString = line.substring(0, cursor.ch)
 
@@ -89,14 +91,31 @@ export class EmojiSuggester extends EditorSuggest<EmojiSuggestion> {
 		const colonMatch = subString.match(/:([\w]*)$/)
 		if (!colonMatch) return null
 
+		const colonIndex = colonMatch.index || 0
+		const queryAfterColon = colonMatch[1] || ''
+
+		// Rule 1: Only show if there's text after colon (ignoring spaces)
+		// If no text after colon yet, don't trigger
+		if (queryAfterColon.length === 0) return null
+
+		// Rule 2: Only show if colon is the "first word", not between words
+		// Check what comes before the colon
+		const beforeColon = subString.substring(0, colonIndex)
+		
+		// If there's any non-whitespace character immediately before the colon,
+		// then the colon is "between" words and should not trigger
+		if (beforeColon.length > 0 && !TRAILING_WHITESPACE_REGEX.test(beforeColon)) {
+			return null
+		}
+
 		// Trigger the emoji suggester
 		return {
 			start: {
 				line: cursor.line,
-				ch: colonMatch.index || 0,
+				ch: colonIndex,
 			},
 			end: cursor,
-			query: colonMatch[1] || '',
+			query: queryAfterColon,
 		}
 	}
 
