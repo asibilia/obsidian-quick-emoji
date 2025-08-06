@@ -29,6 +29,9 @@ const EMOJI_CATEGORIES = [
 	'travel',
 ]
 
+// Regex for checking trailing whitespace (extracted to avoid recompilation)
+const TRAILING_WHITESPACE_REGEX = /\s$/
+
 type EmojiSuggestion = {
 	emoji: Emoji
 	isRecent: boolean
@@ -101,7 +104,7 @@ export class EmojiSuggester extends EditorSuggest<EmojiSuggestion> {
 		
 		// If there's any non-whitespace character immediately before the colon,
 		// then the colon is "between" words and should not trigger
-		if (beforeColon.length > 0 && !beforeColon.match(/\s$/)) {
+		if (beforeColon.length > 0 && !TRAILING_WHITESPACE_REGEX.test(beforeColon)) {
 			return null
 		}
 
