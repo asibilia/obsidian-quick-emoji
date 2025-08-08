@@ -2,12 +2,7 @@
 
 A plugin for [Obsidian](https://obsidian.md) that enables quick, in-editor emoji insertion.
 
-<a href="https://www.buymeacoffee.com/alecsibilia">
-  <img
-    alt="buy me a coffee"
-    src="https://img.buymeacoffee.com/button-api/?text=Show Love%20%20%20&emoji=☕&slug=alecsibilia&button_colour=FF5F5F&font_colour=ffffff&font_family=Inter&outline_colour=000000&coffee_colour=FFDD00"
-  />
-</a>
+<a href="https://www.buymeacoffee.com/alecsibilia"><img alt="show love" src="https://img.buymeacoffee.com/button-api/?text=Show Love&emoji=&slug=alecsibilia&button_colour=FFDD00&font_colour=000000&font_family=Lato&outline_colour=000000&coffee_colour=ffffff" /></a>
 
 ## Features
 
