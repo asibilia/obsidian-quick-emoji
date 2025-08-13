@@ -3,6 +3,7 @@ import { App, PluginSettingTab, Setting } from 'obsidian'
 import type { Emoji } from '@emoji-mart/data'
 
 import type QuickEmojiPlugin from '../main'
+import { getSearchIndex } from '../services/emoji-service'
 import { getActiveEditor, getEmojiWithSkin } from '../utils'
 
 export type SkinSetting = 0 | 1 | 2 | 3 | 4 | 5
@@ -87,7 +88,7 @@ export class QuickEmojiSettingTab extends PluginSettingTab {
 			})
 
 			// Import search functionality to resolve emoji IDs
-			const { getSearchIndex } = await import('../services/emoji-service')
+
 			const searchIndex = await getSearchIndex()
 
 			if (searchIndex) {
@@ -162,7 +163,6 @@ export class QuickEmojiSettingTab extends PluginSettingTab {
 			})
 
 			// Get the search index for emoji lookup
-			const { getSearchIndex } = await import('../services/emoji-service')
 			const searchIndex = await getSearchIndex()
 			if (!searchIndex) {
 				recentContainer.createEl('p', {

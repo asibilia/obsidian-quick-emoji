@@ -77,7 +77,9 @@ export class EmojiCodeMirrorExtension {
 						const currentMode = activeView.getMode()
 						if (this.lastMode !== currentMode) {
 							this.lastMode = currentMode
-							this.decorations = this.buildDecorations(update.view)
+							this.decorations = this.buildDecorations(
+								update.view
+							)
 						}
 					}
 				}
