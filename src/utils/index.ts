@@ -2,7 +2,7 @@ import { App, Editor, MarkdownView } from 'obsidian'
 
 import { type Emoji } from '@emoji-mart/data'
 
-import type { SkinSetting } from './settings-tab'
+import type { SkinSetting } from '../ui/settings-tab'
 
 /**
  * Helper function to get the currently active editor in Obsidian.

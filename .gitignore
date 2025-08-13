@@ -40,8 +40,8 @@ node_modules/
 *.sw?
 # OS specific
 
+mcp.json
+
 # Task files
 # tasks.json
 # tasks/ 
-
-mcp.json

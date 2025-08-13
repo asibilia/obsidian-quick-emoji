@@ -2,36 +2,60 @@ import { Plugin, Notice } from 'obsidian'
 
 import { type Emoji } from '@emoji-mart/data'
 
-import { clearSearchIndex } from './emoji-service'
-import { EmojiSuggester } from './emoji-suggester'
+import { EmojiCodeMirrorExtension } from './rendering/codemirror-extension'
+import { EmojiMarkdownProcessor } from './rendering/markdown-processor'
+import { clearSearchIndex } from './services/emoji-service'
+import { EmojiStorageMigration } from './storage/migration'
+import { EmojiSuggester } from './ui/emoji-suggester'
 import {
 	QuickEmojiSettingTab,
 	DEFAULT_SETTINGS,
 	type QuickEmojiSettings,
-} from './settings-tab'
+} from './ui/settings-tab'
 
 export default class QuickEmojiPlugin extends Plugin {
 	settings: QuickEmojiSettings
-	recentEmojis: Emoji[] = []
+	recentEmojis: string[] = [] // Changed to store emoji IDs instead of full objects
 	emojiSuggester: EmojiSuggester
 	storageKey = 'quick-emoji-recent' // Namespaced storage key
 
 	async onload() {
 		await this.loadSettings()
 
-		// The heavyweight emoji-mart initialization is now lazy-loaded.
-		// The plugin will load almost instantly.
+		// Initialize core components
+		this.initializeComponents()
 
+		// Set up rendering systems
+		this.setupRendering()
+
+		if (process.env.NODE_ENV === 'development') {
+			console.log('Quick Emoji plugin loaded.')
+		}
+	}
+
+	/**
+	 * Initialize core plugin components
+	 */
+	private initializeComponents(): void {
 		// Register the emoji suggester
 		this.emojiSuggester = new EmojiSuggester(this)
 		this.registerEditorSuggest(this.emojiSuggester)
 
 		// Add settings tab
 		this.addSettingTab(new QuickEmojiSettingTab(this.app, this))
+	}
 
-		if (process.env.NODE_ENV === 'development') {
-			console.log('Quick Emoji plugin loaded.')
-		}
+	/**
+	 * Set up emoji rendering systems
+	 */
+	private setupRendering(): void {
+		// Set up markdown post-processor for Reading Mode
+		const markdownProcessor = new EmojiMarkdownProcessor(this)
+		this.registerMarkdownPostProcessor(markdownProcessor.createProcessor())
+
+		// Set up CodeMirror extension for Live Preview
+		const codeMirrorExtension = new EmojiCodeMirrorExtension(this)
+		this.registerEditorExtension(codeMirrorExtension.createExtension())
 	}
 
 	onunload() {
@@ -57,6 +81,7 @@ export default class QuickEmojiPlugin extends Plugin {
 	}
 
 	async loadSettings() {
+		// Load plugin settings
 		try {
 			this.settings = Object.assign(
 				{},
@@ -73,23 +98,12 @@ export default class QuickEmojiPlugin extends Plugin {
 			this.settings = Object.assign({}, DEFAULT_SETTINGS)
 		}
 
-		// Load recent emojis from local storage
-		try {
-			const recentData = this.app.loadLocalStorage(this.storageKey)
-			if (recentData) {
-				this.recentEmojis = JSON.parse(recentData)
-				// Clean up any potentially invalid emojis
-				this.cleanupRecentEmojis()
-			}
-		} catch (e) {
-			if (process.env.NODE_ENV === 'development') {
-				console.error(
-					'Failed to load recent emojis from localStorage',
-					e
-				)
-			}
-			this.recentEmojis = []
-		}
+		// Load and migrate recent emojis using migration service
+		const migration = new EmojiStorageMigration(this.app, this.storageKey)
+		this.recentEmojis = await migration.migrateRecentEmojis()
+		this.recentEmojis = await migration.cleanupRecentEmojis(
+			this.recentEmojis
+		)
 	}
 
 	async saveSettings() {
@@ -106,12 +120,12 @@ export default class QuickEmojiPlugin extends Plugin {
 	}
 
 	saveRecentEmoji(emoji: Emoji) {
-		if (!emoji) return
+		if (!emoji || !emoji.id) return
 
-		// Add to the beginning, remove duplicates
+		// Add emoji ID to the beginning, remove duplicates
 		this.recentEmojis = [
-			emoji,
-			...this.recentEmojis.filter((e) => e.id !== emoji.id),
+			emoji.id,
+			...this.recentEmojis.filter((id) => id !== emoji.id),
 		].slice(0, this.settings.recentCount)
 
 		try {
@@ -126,41 +140,9 @@ export default class QuickEmojiPlugin extends Plugin {
 		}
 	}
 
-	clearRecentEmojis() {
+	async clearRecentEmojis() {
 		this.recentEmojis = []
-		try {
-			this.app.saveLocalStorage(this.storageKey, null)
-		} catch (e) {
-			if (process.env.NODE_ENV === 'development') {
-				console.error(
-					'Failed to clear recent emojis from localStorage',
-					e
-				)
-			}
-		}
-	}
-
-	cleanupRecentEmojis() {
-		// Filter out any null, undefined, or empty string values
-		this.recentEmojis = this.recentEmojis.filter(
-			(emoji) =>
-				emoji &&
-				emoji.name.trim() !== '' &&
-				// Filter out entries that look like text descriptions rather than emojis
-				!emoji.name.match(/^\w+\s+\w+/) &&
-				emoji.name.length < 10
-		)
-
-		// Save the cleaned list
-		try {
-			this.app.saveLocalStorage(
-				this.storageKey,
-				JSON.stringify(this.recentEmojis)
-			)
-		} catch (e) {
-			if (process.env.NODE_ENV === 'development') {
-				console.error('Failed to save cleaned recent emojis', e)
-			}
-		}
+		const migration = new EmojiStorageMigration(this.app, this.storageKey)
+		await migration.clearRecentEmojis()
 	}
 }

@@ -1,0 +1,93 @@
+{
+	"meta": {
+		"generatedAt": "2025-08-13T15:21:21.113Z",
+		"tasksAnalyzed": 10,
+		"totalTasks": 10,
+		"analysisCount": 10,
+		"thresholdScore": 5,
+		"projectName": "Taskmaster",
+		"usedResearch": false
+	},
+	"complexityAnalysis": [
+		{
+			"taskId": 1,
+			"taskTitle": "Unify Suggester to Always Insert Shortcodes",
+			"complexityScore": 2,
+			"recommendedSubtasks": 2,
+			"expansionPrompt": "Break down the task of modifying the `onChooseSuggestion` method. Create subtasks for locating the method, implementing the unified shortcode insertion logic, and writing tests to verify the behavior in both Source Mode and Live Preview.",
+			"reasoning": "This task is highly localized to a single method and involves simplifying logic by removing conditions. The scope is small and the risk is low, making it a low-complexity change."
+		},
+		{
+			"taskId": 2,
+			"taskTitle": "Implement and Fix Markdown Post-Processor",
+			"complexityScore": 7,
+			"recommendedSubtasks": 4,
+			"expansionPrompt": "Decompose the implementation of the Markdown Post-Processor. Create subtasks for: 1. Registering the processor and setting up the basic structure. 2. Implementing the DOM traversal logic to find all text nodes. 3. Developing and testing the regex for shortcode matching and replacement. 4. Integrating the `emoji-mart` library to resolve shortcode IDs to native glyphs.",
+			"reasoning": "This task introduces a core new feature involving Obsidian's rendering pipeline, complex DOM manipulation, and regex, which has a high potential for edge cases and bugs."
+		},
+		{
+			"taskId": 3,
+			"taskTitle": "Refine Post-Processor to Respect Code and Math Boundaries",
+			"complexityScore": 4,
+			"recommendedSubtasks": 3,
+			"expansionPrompt": "Break down the task of adding boundary checks to the post-processor. Create subtasks for: 1. Implementing the `closest()` check within the text node processing loop. 2. Identifying all relevant CSS selectors for code, pre, and math blocks. 3. Creating a comprehensive test document to verify that replacements are correctly skipped.",
+			"reasoning": "While the core logic (`closest()`) is simple, correctly integrating it into the DOM traversal loop and ensuring all of Obsidian's specific boundary selectors are covered requires careful implementation and thorough testing."
+		},
+		{
+			"taskId": 4,
+			"taskTitle": "Integrate Skin Tone Support into Post-Processor",
+			"complexityScore": 3,
+			"recommendedSubtasks": 3,
+			"expansionPrompt": "Expand the task of adding skin tone support. Create subtasks for: 1. Modifying the settings module to expose the skin tone preference. 2. Updating the post-processor to fetch the setting and call the `getEmojiWithSkin` utility. 3. Writing tests to verify that emojis with skin tone support are rendered correctly based on the setting.",
+			"reasoning": "The task is well-defined and primarily relies on an existing library utility function. The complexity lies in plumbing the setting value into the existing post-processor logic rather than developing new, complex algorithms."
+		},
+		{
+			"taskId": 5,
+			"taskTitle": "Fix Recents and Favorites Storage Logic for Shortcodes",
+			"complexityScore": 4,
+			"recommendedSubtasks": 3,
+			"expansionPrompt": "Decompose the task of updating the storage logic for recents and favorites. Create subtasks for: 1. Refactoring the 'add to recents' function to store the emoji ID. 2. Refactoring the 'add/remove favorite' functions to store the emoji ID. 3. Verifying that the new data format is correctly saved to and loaded from persistence.",
+			"reasoning": "This task involves changing the data persistence layer. While the change itself is small (storing an ID string), it requires careful handling to ensure data integrity for a core user-facing feature."
+		},
+		{
+			"taskId": 6,
+			"taskTitle": "Update Recents/Favorites UI to Render from Shortcode IDs",
+			"complexityScore": 3,
+			"recommendedSubtasks": 2,
+			"expansionPrompt": "Break down the UI update for recents and favorites. Create subtasks for: 1. Modifying the 'Recents' tab rendering logic to look up emoji IDs and display the corresponding glyphs. 2. Modifying the 'Favorites' tab rendering logic to perform the same lookup and rendering.",
+			"reasoning": "This is a direct consequence of the data model change in Task 5. It's a localized change to the UI rendering logic, requiring a data lookup before displaying the emoji. The complexity is low as it's a 'read' operation."
+		},
+		{
+			"taskId": 7,
+			"taskTitle": "Remove Obsolete 'Insert Shortcode in Source Mode' Setting",
+			"complexityScore": 1,
+			"recommendedSubtasks": 3,
+			"expansionPrompt": "Create a checklist of subtasks for removing the obsolete setting. The list should include: 1. Removing the toggle from the Settings Tab UI file. 2. Deleting the property from the settings data interface. 3. Searching the codebase for all usages of the setting and removing the associated conditional logic.",
+			"reasoning": "This is a simple refactoring/cleanup task. It involves deleting code from three distinct, well-defined areas (UI, data model, logic), which is a low-risk and low-effort activity."
+		},
+		{
+			"taskId": 8,
+			"taskTitle": "Comprehensive End-to-End Testing and Validation",
+			"complexityScore": 6,
+			"recommendedSubtasks": 5,
+			"expansionPrompt": "Develop a detailed test plan by creating subtasks for each major feature area. Create subtasks for: 1. Testing shortcode insertion and rendering in all modes. 2. Validating boundary checks (code/math). 3. Verifying skin tone and recents/favorites functionality. 4. Performing performance testing on large files. 5. Executing tests on both desktop and mobile platforms.",
+			"reasoning": "This task is broad and encompasses the validation of all other technical tasks. It requires meticulous planning, execution across multiple scenarios and platforms, and has a high impact on the final quality of the release."
+		},
+		{
+			"taskId": 9,
+			"taskTitle": "Update User Documentation and README",
+			"complexityScore": 3,
+			"recommendedSubtasks": 3,
+			"expansionPrompt": "Break down the documentation update. Create subtasks for: 1. Drafting the new text for the README explaining the shortcode-first architecture. 2. Capturing new screenshots that reflect the current UI and workflow. 3. Recording and converting new GIFs to demonstrate key interactions.",
+			"reasoning": "While not technically complex, creating high-quality, clear user documentation and supporting visuals (screenshots/GIFs) requires significant time and attention to detail to be effective."
+		},
+		{
+			"taskId": 10,
+			"taskTitle": "Perform Plugin Submission Compliance Cleanup",
+			"complexityScore": 2,
+			"recommendedSubtasks": 4,
+			"expansionPrompt": "Create a compliance checklist as a series of subtasks. Include subtasks for: 1. Verifying plugin naming in `manifest.json` and settings. 2. Performing a global search and removing all `console.log` statements. 3. Reviewing the settings UI for correct grammar and formatting. 4. Updating copyright information.",
+			"reasoning": "This is a straightforward but critical task that follows a checklist. Each item is simple, but missing one could block the plugin's release. The complexity is in the thoroughness required, not the technical difficulty."
+		}
+	]
+}
