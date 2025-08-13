@@ -124,3 +124,14 @@
 	font-size: 0.8em;
 	color: var(--color-yellow);
 }
+
+/* Emoji widget styling for Live Preview */
+.cm-emoji {
+	display: inline;
+	font-style: normal;
+}
+
+.cm-emoji.qe-emoji {
+	display: inline-block;
+	user-select: text;
+}

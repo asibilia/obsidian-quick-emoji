@@ -3,88 +3,88 @@
     "tasks": [
       {
         "id": 1,
-        "title": "Phase 0: Reorganize Code into `src/` Directory and Modules",
-        "description": "Restructure the plugin's source code by moving all TypeScript files into a dedicated `src/` directory and splitting the main plugin file into smaller, more manageable modules (e.g., `main.ts`, `settings.ts`, `suggester.ts`).",
-        "details": "Create a `src/` directory in the project root. Move `main.ts` and any other source files into it. Update `esbuild.config.js` or equivalent build script to reflect the new entry point (e.g., `entryPoints: ['src/main.ts']`). Create new files like `src/settingsTab.ts` and `src/emojiSuggester.ts` and refactor the relevant classes and logic out of the main file.",
-        "testStrategy": "Verify that the plugin compiles successfully after restructuring. Manually test that the plugin loads and all core functionalities (triggering suggester, settings tab) still work in Obsidian.",
+        "title": "Unify Suggester to Always Insert Shortcodes",
+        "description": "Modify the emoji suggester to consistently insert emoji shortcodes (e.g., `:smile:`) into the editor, regardless of whether the user is in Source Mode or Live Preview. This standardizes the data format in the Markdown files and is the first step in the new architecture.",
+        "details": "Locate the `onChooseSuggestion` method within the `EditorSuggest` implementation for the emoji picker. Remove any conditional logic that checks the editor mode (e.g., `isSourceMode`, `isStrictSourceMode`). The logic should be updated to always take the selected emoji object from `emoji-mart` and insert its `id` field formatted as a shortcode, like `:${emoji.id}:`.",
+        "testStrategy": "Trigger the emoji suggester in both Source Mode and Live Preview. Select an emoji in each mode. Verify that the text inserted into the editor is always the shortcode (e.g., `:rocket:`) and not the native emoji glyph (🚀).",
         "priority": "high",
         "dependencies": [],
         "status": "done",
-        "subtasks": [
-          {
-            "id": 1,
-            "title": "Create `src/` Directory and Move Source Files",
-            "description": "Establish the new source code structure by creating a `src/` directory at the project root and relocating all existing TypeScript files (like `main.ts`) into it.",
-            "dependencies": [],
-            "details": "In the project's root directory, create a new folder named `src`. Move all `.ts` files from the root into this new `src` directory. This is a foundational file system change.\n<info added on 2025-06-28T13:18:35.064Z>\nSuccessfully created src/ directory and moved main.ts to src/main.ts.\n\nWhat worked:\n- mkdir -p src command created the directory without issues\n- mv main.ts src/main.ts successfully relocated the main plugin file\n- Verified main.ts is now in src/ and no longer in root directory\n- Directory structure is clean and ready for next steps\n</info added on 2025-06-28T13:18:35.064Z>",
-            "status": "done",
-            "testStrategy": "Verify that the files are physically located in the `src/` directory. At this point, running the build script is expected to fail, which confirms the need for the next step."
-          },
-          {
-            "id": 2,
-            "title": "Update Build Configuration for New Source Path",
-            "description": "Modify the build script (e.g., `esbuild.config.js`) and TypeScript configuration (`tsconfig.json`) to recognize the new location of the source files.",
-            "dependencies": [
-              1
-            ],
-            "details": "Open `esbuild.config.js` and update the `entryPoints` array to point to the new path, e.g., `entryPoints: ['src/main.ts']`. Open `tsconfig.json` and ensure the `include` property correctly targets the new directory, e.g., `\"include\": [\"src/**/*.ts\"]`.\n<info added on 2025-06-28T13:20:17.303Z>\nSuccessfully updated build configuration for new src/ directory structure.\nWhat worked:\nUpdated esbuild.config.mjs: entryPoints changed from [\"main.ts\"] to [\"src/main.ts\"].\nUpdated tsconfig.json: include changed from \"**/*.ts\" to \"src/**/*.ts\".\nBuild process tested successfully: npm run build completed with exit code 0.\nmain.js output file generated correctly (516KB, fresh timestamp).\nNo build errors or missing file issues encountered.\nConfiguration changes are working perfectly.\n</info added on 2025-06-28T13:20:17.303Z>",
-            "status": "done",
-            "testStrategy": "Run the build command (e.g., `npm run build`). The build process should complete successfully, creating the `main.js` plugin file without any 'file not found' errors."
-          },
-          {
-            "id": 3,
-            "title": "Extract Settings Logic into `src/settingsTab.ts`",
-            "description": "Decouple the settings UI from the main plugin logic. Create a new file for the settings tab and move the corresponding class and interfaces into it.",
-            "dependencies": [
-              2
-            ],
-            "details": "Create a new file `src/settingsTab.ts`. Cut the `SampleSettingTab` class (or its equivalent) and any related setting interfaces from `src/main.ts`. Paste this code into `src/settingsTab.ts` and export the class. In `src/main.ts`, add an import statement to bring in the `SampleSettingTab` from `./settingsTab`.\n<info added on 2025-06-28T13:24:32.770Z>\nSuccessfully extracted settings logic into src/settings-tab.ts. The new file was created with the QuickEmojiSettingTab class and related types/interfaces. The filename was updated from settingsTab.ts to settings-tab.ts to adhere to the repository's kebab-case style guide. The import in main.ts was updated to reference './settings-tab' and the duplicate class definition was removed from main.ts. The build completed successfully with no linter errors, confirming the settings functionality is now fully modularized.\n</info added on 2025-06-28T13:24:32.770Z>",
-            "status": "done",
-            "testStrategy": "After a successful build, load the plugin in the host application. Open the settings and confirm that the plugin's settings tab appears and functions exactly as it did before the refactor."
-          },
-          {
-            "id": 4,
-            "title": "Extract Suggester Logic into `src/emojiSuggester.ts`",
-            "description": "Isolate the auto-suggestion/completion logic into its own dedicated module to improve code organization and maintainability.",
-            "dependencies": [
-              3
-            ],
-            "details": "Create a new file `src/emojiSuggester.ts`. Find the class responsible for suggestions (e.g., `EmojiSuggester`) in `src/main.ts`. Move this class and any helper functions or types it relies on into the new `src/emojiSuggester.ts` file. Export the class. Import the suggester class back into `src/main.ts` where it is instantiated and registered.\n<info added on 2025-06-28T13:27:28.809Z>\nSuccessfully extracted the EmojiSuggester class and its related helper functions (`EMOJI_CATEGORIES` constant, `getActiveEditor`, `getEmojiWithSkin`, and `searchEmojis`) into `src/emoji-suggester.ts`, applying the kebab-case naming convention. The import in `main.ts` was updated to reference the new module, and all duplicate code was removed. The build and linting processes completed successfully, confirming the modular structure is working correctly.\n</info added on 2025-06-28T13:27:28.809Z>",
-            "status": "done",
-            "testStrategy": "Build the plugin. In the editor, trigger the suggester (e.g., by typing a colon ':'). Verify that the suggestion pop-up appears and provides suggestions correctly."
-          },
-          {
-            "id": 5,
-            "title": "Finalize `main.ts` and Verify Plugin Integrity",
-            "description": "Clean up the `main.ts` file, which should now act as an orchestrator, and perform a final check to ensure all refactored parts are integrated correctly and the plugin is fully functional.",
-            "dependencies": [
-              4
-            ],
-            "details": "Review `src/main.ts`. Its primary role should be handling the plugin lifecycle (`onload`, `onunload`) and initializing the imported modules (settings tab, suggester). Remove any obsolete code, comments, or unused imports. Ensure all imports use relative paths.\n<info added on 2025-06-28T13:29:23.329Z>\nSuccessfully finalized main.ts and verified plugin integrity. The unnecessary console.log was removed from the onunload method as required by Obsidian submission guidelines. The main.ts file is now clean and minimal (2.9KB, 120 lines) with all code properly modularized into three focused files (main, emoji-suggester, settings-tab). The build completed successfully with exit code 0 and no linter errors. The plugin is now ready for submission, adhering to the repository style guide and Obsidian requirements.\n</info added on 2025-06-28T13:29:23.329Z>",
-            "status": "done",
-            "testStrategy": "Perform a full regression test. Build the plugin one last time. Test all features: loading/unloading the plugin, opening and changing settings, and using the suggester. Check the developer console for any errors."
-          }
-        ]
+        "subtasks": []
       },
       {
         "id": 2,
-        "title": "Phase 0: Naming Compliance - Rename Plugin to 'Quick Emoji'",
-        "description": "Update the plugin's manifest.json and any user-facing headers to remove the word 'Obsidian' from the name, complying with community plugin guidelines. The new name should be 'Quick Emoji'.",
-        "details": "In `manifest.json`, change the `name` field from 'Obsidian Quick Emoji' to 'Quick Emoji'. Search the codebase for any UI elements, like settings tab headers, that use the old name and update them. This is a critical step for plugin submission.",
-        "testStrategy": "Check the `manifest.json` file for the correct name. Load the plugin in Obsidian and verify that the name displayed in the community plugins list and any relevant UI components is 'Quick Emoji'.",
+        "title": "Implement and Fix Markdown Post-Processor",
+        "description": "Implement and debug the `MarkdownPostProcessor` to find and replace emoji shortcodes with their corresponding native emoji glyphs during rendering in Live Preview and Reading modes.",
+        "details": "In the main plugin class, use `this.registerMarkdownPostProcessor((element, context) => { ... });`. The processor should traverse the child nodes of the provided `element`. For each text node, use the regex `/:([a-z0-9_+-]+):/gi` to find all shortcode matches. For each match, replace the text node with multiple nodes: a text node for the text before the match, a `<span>` or `Text` node containing the resolved emoji glyph, and a text node for the text after. Use `emoji-mart`'s search index to resolve the shortcode `id` to a native emoji character.",
+        "testStrategy": "Create a Markdown note with several valid shortcodes (e.g., `:smile:`, `:cat:`, `:thumbs_up:`). Switch to Live Preview and then Reading mode. Verify that all shortcodes are rendered as their corresponding emoji glyphs. Check the developer console for errors.",
         "priority": "high",
         "dependencies": [
           1
         ],
         "status": "done",
-        "subtasks": []
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Register the Markdown Post-Processor and Basic Scaffolding",
+            "description": "Set up the fundamental structure for the emoji post-processor by registering it within the main plugin's `onload` method. This initial step ensures the processor is active and ready for further implementation.",
+            "dependencies": [],
+            "details": "In the main plugin class's `onload` method, add the call `this.registerMarkdownPostProcessor((element, context) => { ... });`. The callback function should initially be empty or contain a `console.log('Post-processor triggered')` to verify it's being called correctly during Markdown rendering in Live Preview and Reading modes.",
+            "status": "done",
+            "testStrategy": "Open a Markdown file in Obsidian. Open the developer console. Verify that the log message 'Post-processor triggered' appears when the view renders or changes, confirming the processor is correctly registered."
+          },
+          {
+            "id": 2,
+            "title": "Implement DOM Traversal to Find All Text Nodes",
+            "description": "Implement the logic within the post-processor to traverse the DOM of the rendered `element` and identify all `Text` nodes that may contain emoji shortcodes.",
+            "dependencies": [
+              "2.1"
+            ],
+            "details": "Inside the post-processor callback, implement a DOM traversal function. A `TreeWalker` is recommended for efficiency: `const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT);`. Iterate through the walker (`while (walker.nextNode())`) to get all text nodes. For now, log the `textContent` of each found text node to the console to confirm the traversal is working.",
+            "status": "done",
+            "testStrategy": "Create a markdown note with various elements like headings, paragraphs, and list items. Check the developer console to confirm that the `textContent` of all text within these elements is being logged by the post-processor."
+          },
+          {
+            "id": 3,
+            "title": "Find Shortcodes with Regex and Resolve Emoji Data",
+            "description": "For each identified text node, use the specified regex to find all emoji shortcode matches. For each valid match, use the `emoji-mart` search index to look up the corresponding emoji data.",
+            "dependencies": [
+              "2.2"
+            ],
+            "details": "Within the text node processing loop, use the regex `/:([a-z0-9_+-]+):/gi` on the node's `textContent`. Use `String.prototype.matchAll()` to get an iterator of all matches. For each match, extract the shortcode name from the first capture group. Use this name to query the pre-loaded `emoji-mart` data index to resolve it to an emoji object. If an emoji object is found, log it to the console.",
+            "status": "done",
+            "testStrategy": "Create a markdown note with valid shortcodes (e.g., `:smile:`, `:rocket:`) and invalid/plain text (e.g., `:not_an_emoji:`, `10:30`). Verify that the console logs the correct emoji data objects only for the valid shortcodes."
+          },
+          {
+            "id": 4,
+            "title": "Implement DOM Replacement for Found Shortcodes",
+            "description": "Implement the core logic to replace a text node containing shortcodes with a new set of nodes representing the text and the resolved emoji glyphs.",
+            "dependencies": [
+              "2.3"
+            ],
+            "details": "This is a complex operation. For each text node containing matches, create a `DocumentFragment`. Iterate through the regex matches. For the text between the last match and the current one, create and append a `Text` node. For the match itself, create and append a `<span>` or `Text` node containing the resolved native emoji glyph. After the loop, append any remaining text after the last match. Finally, use `textNode.replaceWith(fragment)` to replace the original text node with the newly constructed content in a single DOM operation.",
+            "status": "done",
+            "testStrategy": "Create a note with text like `Hello :world:!` and `Test :cat: and :dog: emojis.`. Switch to Live Preview and Reading mode. Verify the output is rendered correctly as 'Hello 🌎!' and 'Test 🐈 and 🐕 emojis.'. Check the DOM inspector to confirm the original text nodes have been replaced."
+          },
+          {
+            "id": 5,
+            "title": "Debug and Refine Processor for Edge Cases",
+            "description": "Test the post-processor thoroughly in both Live Preview and Reading modes, fixing any bugs related to cursor position, selection, or rendering artifacts that arise from the DOM manipulation.",
+            "dependencies": [
+              "2.4"
+            ],
+            "details": "The DOM manipulation in Live Preview can be sensitive. Systematically test various scenarios: shortcodes at the beginning/end of a line, adjacent shortcodes (`:one::two:`), shortcodes within links or other markdown syntax. Pay close attention to the editor's behavior when clicking or typing near the replaced emojis. Ensure that the replacement logic does not cause excessive re-renders or performance degradation on large documents. Add checks to ensure the text node's parent exists before attempting replacement.",
+            "status": "done",
+            "testStrategy": "Create a comprehensive test file with shortcodes in various contexts: inside lists, blockquotes, headings, and next to other markdown syntax like bold or italics. Edit the text around the rendered emojis in Live Preview to check for stability. Verify there are no errors in the developer console during these operations."
+          }
+        ]
       },
       {
         "id": 3,
-        "title": "Phase 0: Update Manifest Description",
-        "description": "Update the `description` field in `manifest.json` to remove references to 'Obsidian' and ensure it follows the official plugin description guidelines for brevity and clarity.",
-        "details": "Edit the `description` in `manifest.json`. A good example would be changing 'A quick emoji inserter for Obsidian' to 'Quickly search and insert emojis in your editor'.",
-        "testStrategy": "Review the `manifest.json` file. Load the plugin in Obsidian and check the description in the community plugins browser to ensure it's updated and concise.",
+        "title": "Refine Post-Processor to Respect Code and Math Boundaries",
+        "description": "Enhance the Markdown post-processor to prevent it from replacing shortcodes that appear inside of HTML `<code>` tags, `<pre>` blocks (for code blocks), and math blocks.",
+        "details": "Within the `MarkdownPostProcessor`'s DOM traversal logic, before attempting to replace a shortcode in a text node, check its ancestry. Use `textNode.parentElement.closest('pre, code, .math, .cm-inline-code')` to determine if the node is within a boundary that should be ignored. If this check returns a non-null element, skip the replacement logic for that text node.",
+        "testStrategy": "Create a test note with shortcodes in various locations: a normal paragraph, inside `inline code`, within a fenced ```code block```, and inside a `$$math block$$`. Confirm that only the shortcode in the normal paragraph is rendered as an emoji in Live Preview and Reading modes.",
         "priority": "high",
         "dependencies": [
           2
@@ -94,21 +94,77 @@
       },
       {
         "id": 4,
-        "title": "Phase 0: Update Copyright Information",
-        "description": "Update the copyright notice in the license file and any relevant source file headers from 'Dynalist Inc.' to the current author's name and the current year.",
-        "details": "Locate the `LICENSE` file and any file headers containing a copyright notice. Replace 'Copyright (C) 2020-2025 by Dynalist Inc.' with 'Copyright (C) [Current Year] by [Author's Name]'.",
-        "testStrategy": "Perform a global search for 'Dynalist' in the project to find all instances. Manually inspect the `LICENSE` file and source code headers to confirm the update.",
-        "priority": "high",
-        "dependencies": [],
+        "title": "Integrate Skin Tone Support into Post-Processor",
+        "description": "Update the post-processor rendering logic to apply the user's configured default skin tone to emojis that support it.",
+        "details": "Inside the post-processor, after finding a shortcode and resolving it to an emoji object from `emoji-mart`, check if the emoji has skin tone variations. If so, retrieve the user's default skin tone from the plugin settings (`this.settings.skinTone`). Use the `getEmojiWithSkin` utility function provided by the `emoji-mart` data to get the correct character for the specified skin tone before rendering it.",
+        "testStrategy": "Go to the plugin settings and set a default skin tone (e.g., 'medium-dark'). Create a note with a shortcode for an emoji that supports skin tones (e.g., `:wave:` or `:thumbsup:`). In Live Preview/Reading mode, verify that the rendered emoji displays with the selected skin tone. Change the setting and confirm the emoji updates on re-render.",
+        "priority": "medium",
+        "dependencies": [
+          2
+        ],
         "status": "done",
-        "subtasks": []
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Expose User Settings to the Markdown Post-Processor",
+            "description": "Ensure the user's configured skin tone setting is accessible within the scope of the Markdown post-processor callback function. This is a prerequisite for applying the correct skin tone.",
+            "dependencies": [],
+            "details": "In the main plugin class where `registerMarkdownPostProcessor` is called, ensure the callback function has access to `this.settings`. Using an arrow function for the callback, like `(el, ctx) => { ... }`, will automatically preserve the `this` context of the class instance, making `this.settings.skinTone` available.",
+            "status": "done",
+            "testStrategy": "Add a `console.log(this.settings.skinTone)` inside the post-processor callback. Trigger the processor by typing an emoji shortcode in a note and verify that the configured skin tone value from the settings panel is correctly logged to the developer console."
+          },
+          {
+            "id": 2,
+            "title": "Identify Emojis Supporting Skin Tone Variations",
+            "description": "After resolving a shortcode to an emoji object from `emoji-mart`, implement a check to determine if that specific emoji supports skin tone variations.",
+            "dependencies": [
+              "4.1"
+            ],
+            "details": "Inside the post-processor, once you have the `emoji` object, check for the existence and content of its skin tone data. A reliable check is to see if `emoji.skins` is an array and has a length greater than 1. This check will prevent attempts to apply skin tones to emojis that do not support them (e.g., animals, objects).",
+            "status": "done",
+            "testStrategy": "In the post-processor, log the result of the skin tone support check for different emojis. Test with `:wave:` (should be true) and `:cat:` (should be false) and verify the console output is correct."
+          },
+          {
+            "id": 3,
+            "title": "Import and Prepare the `getEmojiWithSkin` Utility",
+            "description": "Import the `getEmojiWithSkin` utility function from the `@emoji-mart/data` package so it can be used to generate the correct emoji character.",
+            "dependencies": [],
+            "details": "At the top of the plugin file where the post-processor is defined, add an import statement: `import { getEmojiWithSkin } from '@emoji-mart/data'`. This makes the function available for use within the module.",
+            "status": "done",
+            "testStrategy": "Confirm that the application builds without errors after adding the import. No runtime test is needed for this step alone, as it will be tested in subsequent steps."
+          },
+          {
+            "id": 4,
+            "title": "Implement Conditional Logic to Select Emoji Character",
+            "description": "Create the primary logic block that decides which emoji character to render. It should use the default character unless the emoji supports skin tones and a non-neutral skin tone is configured by the user.",
+            "dependencies": [
+              "4.1",
+              "4.2",
+              "4.3"
+            ],
+            "details": "Inside the post-processor, after resolving the emoji, create a variable `let finalEmojiChar = emoji.native;`. Then, use an `if` statement: `if (supportsSkinTones && this.settings.skinTone > 1) { ... }`. The `supportsSkinTones` boolean comes from subtask 4.2. The `skinTone > 1` check assumes '1' is the neutral/default value. Inside the `if` block, call `finalEmojiChar = getEmojiWithSkin(emoji, this.settings.skinTone);`.",
+            "status": "done",
+            "testStrategy": "Set a default skin tone in settings. Use `console.log` to output the `finalEmojiChar` variable. For `:wave:`, it should log the skinned version. For `:cat:`, it should log the default cat emoji. If the skin tone setting is neutral, `:wave:` should also log its default version."
+          },
+          {
+            "id": 5,
+            "title": "Update DOM Replacement to Render the Final Emoji Character",
+            "description": "Modify the final step of the post-processor to use the character determined by the new skin tone logic when replacing the shortcode text in the DOM.",
+            "dependencies": [
+              "4.4"
+            ],
+            "details": "Locate the code that creates the new text node or span to replace the shortcode (e.g., `document.createTextNode(emoji.native)`). Change this to use the `finalEmojiChar` variable that was determined in the previous subtask. The line should now look like `document.createTextNode(finalEmojiChar)`.",
+            "status": "done",
+            "testStrategy": "Go to plugin settings and set a default skin tone (e.g., 'medium-dark', skin tone 4). Create a note with `:thumbsup:`. In Live Preview and Reading mode, verify the rendered emoji has the medium-dark skin tone. Change the setting to 'light' (skin tone 2) and refresh/re-render the view; verify the emoji updates to the light skin tone."
+          }
+        ]
       },
       {
         "id": 5,
-        "title": "Phase 0: Clean Up Console Logging",
-        "description": "Remove all development-related `console.log` statements or wrap them in a conditional check to ensure they do not run in production builds, as required for plugin submission.",
-        "details": "Search the entire codebase for `console.log`. Remove any unnecessary logs. For logs that are useful for debugging, wrap them in a check. Example: `if (process.env.NODE_ENV === 'development') { console.log('Debug info'); }`. Update the build script to set `NODE_ENV`.",
-        "testStrategy": "Run the production build of the plugin. Load it in Obsidian and open the developer console. Perform various actions within the plugin and verify that no custom log messages appear.",
+        "title": "Fix Recents and Favorites Storage Logic for Shortcodes",
+        "description": "Update the logic for tracking and storing recently used and favorited emojis to handle shortcodes (e.g., `:smile:`) instead of native emoji glyphs.",
+        "details": "Locate the functions responsible for managing recent and favorite emojis. Modify the code that adds an emoji to the 'recents' list to store the emoji's `id` (e.g., 'smile') from the `emoji-mart` object. The persistence layer, whether `LocalStorage` or Obsidian's data API, should now store an array of these IDs. Apply the same logic to the favorites system.",
+        "testStrategy": "Clear recent emoji history. Use the plugin to insert several emojis. Restart Obsidian. Open the emoji suggester and verify that the 'Recents' tab is correctly populated with the emojis you used. Test adding an emoji to favorites, restarting, and confirming it's still favorited.",
         "priority": "high",
         "dependencies": [
           1
@@ -117,247 +173,343 @@
         "subtasks": [
           {
             "id": 1,
-            "title": "Configure Build Script to Define NODE_ENV and Enable Dead Code Elimination",
-            "description": "Update the build configuration (e.g., esbuild.config.mjs) to define the `process.env.NODE_ENV` variable. This will allow for conditional code blocks that are stripped from production builds. Ensure minification is enabled for production builds to perform the necessary dead code elimination.",
+            "title": "Refactor 'add to recents' function to use emoji ID",
+            "description": "Locate the function responsible for adding a selected emoji to the 'recents' list. Modify this function to store the emoji's shortcode ID (e.g., 'smile') from the `emoji-mart` object instead of its native glyph.",
             "dependencies": [],
-            "details": "In the project's build script, add a `define` option to set `process.env.NODE_ENV`. For an esbuild setup, this would look like `define: { 'process.env.NODE_ENV': JSON.stringify(prod ? 'production' : 'development') }`. Verify that `minify: true` is set for production builds, as this is what removes the unused conditional blocks.\n<info added on 2025-06-28T14:02:33.403Z>\nSuccessfully added NODE_ENV definition to esbuild.config.mjs:\n\ndefine: {\n    'process.env.NODE_ENV': JSON.stringify(prod ? 'production' : 'development'),\n},\n\nThis will:\n- Set NODE_ENV to 'development' in watch mode (`npm run dev`)\n- Set NODE_ENV to 'production' in build mode (`npm run build`)\n- Enable dead code elimination in production due to existing `minify: prod` option\n- Allow conditional blocks like `if (process.env.NODE_ENV === 'development')` to be stripped from production builds\n\nNext: Test the configuration to verify it works correctly.\n</info added on 2025-06-28T14:02:33.403Z>\n<info added on 2025-06-28T14:06:39.079Z>\nSuccessfully tested NODE_ENV configuration.\nTest Results:\n- Added a temporary console.log wrapped in an `if (process.env.NODE_ENV === 'development')` conditional.\n- The production build (`npm run build`) correctly stripped out the test console.log.\n- The development build (`npm run dev`) included the test console.log in main.js at line 3053.\n- The temporary test code has been removed.\n\nConfiguration verified:\n- NODE_ENV is set to 'production' in production builds, enabling dead code elimination.\n- NODE_ENV is set to 'development' in development builds, preserving debug code.\n- The build system correctly strips development-only conditionals from the production bundle.\n\nReady to proceed with refactoring actual console statements using this mechanism.\n</info added on 2025-06-28T14:06:39.079Z>",
+            "details": "Find the event handler for emoji selection in the picker. When an emoji is selected, it's passed to a function like `addToRecents(emoji)`. Change this function to extract `emoji.id` and push it to the in-memory array of recent emojis, rather than `emoji.native`.",
             "status": "done",
-            "testStrategy": "Create a temporary `console.log` wrapped in an `if (process.env.NODE_ENV === 'development')` block. Run a production build and inspect the output bundle (e.g., `main.js`) to confirm the `console.log` statement has been removed. Run a development build and confirm it is still present."
+            "testStrategy": "Use a debugger or console logs to verify that after selecting an emoji, the in-memory array for recents contains the emoji's ID string, not the native character."
           },
           {
             "id": 2,
-            "title": "Refactor `console.log` Statements for Development-Only Output",
-            "description": "Perform a codebase-wide search for all instances of `console.log`. Analyze each one to determine its purpose. Remove any logs that are no longer needed. For logs that are valuable for ongoing development or debugging, wrap them in a conditional check: `if (process.env.NODE_ENV === 'development') { ... }`.",
-            "dependencies": [],
-            "details": "Use the IDE's global search feature to find all occurrences of `console.log(`. For each result, evaluate its context. If it's obsolete or was for temporary debugging, delete the line. If it provides useful debugging information (e.g., object states, API responses), enclose it in the development-only conditional block.\n<info added on 2025-06-28T14:08:03.701Z>\nA comprehensive search for `console.log` statements was performed across the source code. The search confirmed that no `console.log` statements exist in any of the TypeScript source files (`src/*.ts`). The only instances found are within the `commit.ts` build utility script, which is not included in the shipped plugin. Therefore, no refactoring was necessary. The NODE_ENV infrastructure established in the previous step is available for future use.\n</info added on 2025-06-28T14:08:03.701Z>",
+            "title": "Update persistence logic to save recent emoji IDs",
+            "description": "Modify the function that saves the 'recents' list to persistent storage (e.g., `LocalStorage` or Obsidian's `saveData`). Ensure it now saves the array of emoji IDs generated by the updated 'add to recents' function.",
+            "dependencies": [
+              "5.1"
+            ],
+            "details": "Locate the code that calls `localStorage.setItem('emoji-recents', ...)` or a similar Obsidian API call. Ensure the data being passed is the array of string IDs. The key used for storage should remain the same to facilitate migration.",
             "status": "done",
-            "testStrategy": "After refactoring, run the plugin in development mode. Trigger actions that previously logged to the console and verify that the debug messages still appear. Load the production version of the plugin and verify that no `console.log` messages appear during normal operation."
+            "testStrategy": "After selecting a few emojis, inspect the application's LocalStorage or the plugin's `data.json` file. Verify that the key for recent emojis now stores an array of strings (e.g., `[\"smile\", \"tada\", \"thumbsup\"]`)."
           },
           {
             "id": 3,
-            "title": "Analyze and Refactor `console.error` to Use Conditionals or User-Facing Notices",
-            "description": "Systematically review every `console.error` call as highlighted in the review feedback. For each instance, decide the appropriate action: remove if irrelevant, wrap in a development conditional if for debugging, or replace with a user-facing `new Notice('...')` if it represents an error the user should be aware of.",
+            "title": "Refactor 'toggle favorite' function to use emoji ID",
+            "description": "Update the logic for adding and removing emojis from the 'favorites' list. The function should now operate on the emoji's shortcode ID instead of its native glyph.",
             "dependencies": [],
-            "details": "Search for all `console.error` instances. For errors that indicate a non-fatal plugin issue that the user can act on or should know about (e.g., failed to parse a file, API limit reached), replace the log with `new Notice('A user-friendly error message.');`. For errors that are only useful for debugging internal state, wrap them in the `if (process.env.NODE_ENV === 'development')` block. Remove any that are no longer relevant.\n<info added on 2025-06-28T14:01:21.188Z>\nIdentified all console.error statements in the codebase:\n\nIn `src/emoji-suggester.ts`:\nLine 60: `console.error('SearchIndex not initialized')` - Error handling for uninitialized search\nLine 66: `console.error('Failed to search emojis:', error)` - Search failure handling\nLine 149: `console.error(error)` - Generic error in getSuggestions\nLine 158: `console.error('Quick Emoji: Error searching emojis:', error)` - Search error in getSuggestions\n\nIn `src/main.ts`:\nLine 26: `console.error('Failed to initialize emoji-mart data:', error)` - Critical initialization failure with Notice\nLine 60: `console.error('Failed to load recent emojis from localStorage', e)` - localStorage read failure\nLine 84: `console.error('Failed to save recent emojis to localStorage', e)` - localStorage write failure\nLine 93: `console.error('Failed to clear recent emojis from localStorage', e)` - localStorage clear failure\nLine 115: `console.error('Failed to save cleaned recent emojis', e)` - localStorage cleanup failure\n\nAnalysis complete, ready to refactor each based on user impact vs debugging needs.\n</info added on 2025-06-28T14:01:21.188Z>\n<info added on 2025-06-28T14:28:47.481Z>\nRefactoring of all console.error statements is complete.\n\nIn `src/main.ts`, the following were wrapped in development conditionals:\n- Line 26: Failed to initialize emoji-mart data (debugging info, Notice already shown to user)\n- Line 60: Failed to load recent emojis from localStorage (non-critical, debugging only)\n- Line 84: Failed to save recent emojis to localStorage (non-critical, debugging only)\n- Line 93: Failed to clear recent emojis from localStorage (non-critical, debugging only)\n- Line 115: Failed to save cleaned recent emojis (non-critical, debugging only)\n\nIn `src/emoji-suggester.ts`, the following were wrapped in development conditionals:\n- Line 60: SearchIndex not initialized (has fallback logic, debugging only)\n- Line 66: Failed to search emojis (has fallback logic, debugging only)\n- Line 149: Generic error in category search (has fallback logic, debugging only)\n- Line 158: Main error in getSuggestions (has fallback logic, debugging only)\n\nVerification:\n- Production build: No console.error statements found in main.js.\n- All errors properly wrapped in `if (process.env.NODE_ENV === 'development')` blocks.\n- Build system strips development conditionals from the production bundle.\n- User-facing errors still show appropriate Notice messages.\n</info added on 2025-06-28T14:28:47.481Z>",
+            "details": "Find the function that handles favoriting, likely `toggleFavorite(emoji)`. This function should check for the existence of `emoji.id` in the favorites array, and add or remove it accordingly. The in-memory favorites list should be an array of emoji IDs.",
             "status": "done",
-            "testStrategy": "For errors converted to a `Notice`, manually trigger the error condition and verify that the notice toast appears correctly in the Obsidian UI. For errors wrapped in a dev conditional, verify they appear in the console in development mode but are absent in production builds."
+            "testStrategy": "Use a debugger to step through the `toggleFavorite` function. Confirm that clicking the favorite icon adds the correct emoji ID to the in-memory favorites array and clicking it again removes it."
+          },
+          {
+            "id": 4,
+            "title": "Update persistence logic to save favorite emoji IDs",
+            "description": "Modify the function that saves the 'favorites' list to persistent storage. This function must now save the array of favorite emoji IDs.",
+            "dependencies": [
+              "5.3"
+            ],
+            "details": "Similar to the recents persistence, find where the favorites array is saved to storage. Ensure it's writing the array of string IDs. This might be part of the same function that saves all plugin settings.",
+            "status": "done",
+            "testStrategy": "Add and remove a few emojis from favorites. Inspect the application's LocalStorage or the plugin's `data.json` file to confirm the favorites key stores an array of the correct emoji IDs."
+          },
+          {
+            "id": 5,
+            "title": "Implement a one-time data migration for existing user data",
+            "description": "Create a migration routine that runs when the plugin loads. It should check if the stored 'recents' and 'favorites' data is in the old format (array of native glyphs). If so, it must convert this data to the new format (array of IDs) and save it to prevent data loss for existing users.",
+            "dependencies": [
+              "5.2",
+              "5.4"
+            ],
+            "details": "In the plugin's `onload` method, when loading recents/favorites from storage, check the type of the first element in the array. If it's a multi-character string that is not a simple shortcode (i.e., it's a native emoji), assume it's old data. Iterate through the array, use the `emoji-mart` data index to find the corresponding ID for each native glyph, and create a new array of IDs. Overwrite the old stored data with this new array. This check should be performed every time data is loaded.",
+            "status": "done",
+            "testStrategy": "Manually set the storage key for recents to an array of native emojis (e.g., `[\"😀\", \"🎉\"]`). Reload Obsidian. Inspect the storage again. The key should now contain the migrated data (e.g., `[\"grinning\", \"tada\"]`). Repeat for favorites."
           }
         ]
       },
       {
         "id": 6,
-        "title": "Phase 0: Remove Top-Level Heading from Settings UI",
-        "description": "Refactor the settings tab UI to remove the manually created top-level `h2` heading, as per Obsidian's UI guidelines.",
-        "details": "In the settings tab class (e.g., `src/settingsTab.ts`), find and remove the line `containerEl.createEl('h2', { text: 'Quick Emoji Settings' });`. The plugin settings title is automatically handled by Obsidian.",
-        "testStrategy": "Open the settings tab for the plugin in Obsidian. Verify that the redundant 'Quick Emoji Settings' H2 heading is gone and only the Obsidian-provided title remains.",
-        "priority": "high",
+        "title": "Update Recents/Favorites UI to Render from Shortcode IDs",
+        "description": "Modify the UI for the 'Recents' and 'Favorites' sections in the emoji suggester to correctly render emoji glyphs from the newly stored shortcode IDs.",
+        "details": "The UI rendering logic for the suggester's recents/favorites tabs currently expects a list of native emoji characters. This logic must be updated to handle a list of emoji IDs. For each ID, use the `emoji-mart` search index or data to find the corresponding emoji object and then render its native character in the UI.",
+        "testStrategy": "After using several emojis, open the suggester. Navigate to the 'Recents' tab. Verify that it displays the correct emoji glyphs, not the text IDs. The visual appearance should be seamless to the user. Repeat this test for the 'Favorites' tab.",
+        "priority": "medium",
+        "dependencies": [
+          5
+        ],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Locate and Analyze Current UI Rendering Logic for Recents/Favorites",
+            "description": "Identify the specific UI components or functions responsible for rendering the emoji lists in both the 'Recents' and 'Favorites' tabs. Analyze how they currently receive and process the list of native emojis to understand the exact points for modification.",
+            "dependencies": [],
+            "details": "Search the codebase for keywords related to the emoji suggester, such as 'recents', 'favorites', 'EmojiSuggest'. Document the file paths and function/component names that handle the rendering loop for these lists. This is an investigation step to prepare for the code changes.",
+            "status": "done",
+            "testStrategy": "Manually inspect the identified code files and confirm they are responsible for rendering the UI by adding a temporary console.log() or a visual marker and observing the change in the running application."
+          },
+          {
+            "id": 2,
+            "title": "Implement a Centralized Emoji Lookup Utility",
+            "description": "Create a reusable utility function that takes an emoji shortcode ID (e.g., 'smile') as input and returns the corresponding full emoji object from the `emoji-mart` dataset. This utility will be the core of the new rendering logic.",
+            "dependencies": [],
+            "details": "Create a new file, e.g., `emoji-utils.ts`. Implement a function like `getEmojiObjectById(id: string): EmojiObject | null`. This function should efficiently access the `emoji-mart` data index (e.g., `emojiIndex.search(id)` or direct lookup if possible). Ensure it gracefully handles cases where an ID is not found by returning null or undefined.",
+            "status": "done",
+            "testStrategy": "Write unit tests for the new utility function. Test with valid IDs (e.g., 'wave'), IDs with skin tones, and invalid/non-existent IDs to ensure it returns the correct emoji object or null as expected."
+          },
+          {
+            "id": 3,
+            "title": "Modify 'Recents' Tab to Render Emojis from IDs",
+            "description": "Update the 'Recents' tab UI component identified in subtask 6.1. Modify its rendering loop to use the new lookup utility. The component will now map over the array of shortcode IDs, call the lookup utility for each ID, and render the `native` property of the resulting emoji object.",
+            "dependencies": [
+              "6.1",
+              "6.2"
+            ],
+            "details": "In the 'Recents' component, change the data processing logic. Instead of directly iterating over the props array, use `props.recentIds.map(id => getEmojiObjectById(id))`. Filter out any null results. Then, map over the resulting array of emoji objects and pass the `native` character to the rendering element.",
+            "status": "done",
+            "testStrategy": "After implementation, clear recent emojis. Use several emojis to populate the recents list. Open the suggester and navigate to the 'Recents' tab. Verify that the correct emoji glyphs are displayed, not the text IDs."
+          },
+          {
+            "id": 4,
+            "title": "Modify 'Favorites' Tab to Render Emojis from IDs",
+            "description": "Apply the same pattern from the 'Recents' tab update to the 'Favorites' tab UI component. Modify its rendering logic to use the same emoji lookup utility to convert favorite emoji IDs into renderable native emoji glyphs.",
+            "dependencies": [
+              "6.1",
+              "6.2"
+            ],
+            "details": "This task mirrors the implementation of subtask 6.3 but targets the 'Favorites' component. Locate the component and update its data handling to iterate over an array of favorite IDs, use the `getEmojiObjectById` utility for conversion, and render the `native` property of each returned emoji object.",
+            "status": "done",
+            "testStrategy": "Add several emojis to favorites. Restart the application. Open the suggester and navigate to the 'Favorites' tab. Confirm that the correct emoji glyphs are displayed. Test removing a favorite and ensure the UI updates correctly."
+          },
+          {
+            "id": 5,
+            "title": "Refactor Shared Logic and Perform Final Integration Test",
+            "description": "Review the updated code for both 'Recents' and 'Favorites' tabs. If there is significant duplicated logic, refactor it into a shared helper or component. Finally, perform a comprehensive end-to-end test of the entire feature.",
+            "dependencies": [
+              "6.3",
+              "6.4"
+            ],
+            "details": "If both components use a similar `map -> lookup -> render` pattern, consider creating a generic `EmojiGridFromIds` component that accepts an array of IDs and renders the grid. This will improve maintainability. The final test should involve using the suggester normally, adding recents and favorites, and confirming both tabs work perfectly together.",
+            "status": "done",
+            "testStrategy": "Perform a full user workflow test: 1. Use several emojis. 2. Favorite some of them. 3. Restart Obsidian. 4. Open the suggester and check both 'Recents' and 'Favorites' tabs for correctness. 5. Un-favorite an emoji and verify the UI updates."
+          }
+        ]
+      },
+      {
+        "id": 7,
+        "title": "Remove Obsolete 'Insert Shortcode in Source Mode' Setting",
+        "description": "Remove the settings UI toggle and associated code for 'inserting shortcodes in source mode,' as this behavior is now the default and only option.",
+        "details": "Edit the plugin's settings tab definition file. Remove the `.addToggle()` component that creates the setting in the UI. In the settings data structure (e.g., `interface QuickEmojiSettings`), remove the corresponding boolean property. Finally, search the codebase for any usage of this setting and remove the conditional logic.",
+        "testStrategy": "Open the plugin's settings tab in Obsidian. Verify that the option to 'insert shortcodes in source mode' is no longer visible. Confirm that its removal has not introduced any console errors or unexpected behavior.",
+        "priority": "medium",
         "dependencies": [
           1
         ],
         "status": "done",
-        "subtasks": []
-      },
-      {
-        "id": 7,
-        "title": "Phase 0: Use Sentence Case in Settings UI",
-        "description": "Update the settings tab to use sentence case for all user-facing text elements, such as labels and descriptions.",
-        "details": "Review all `setName()` and `setDesc()` calls in the settings tab implementation. Change strings like 'Recent Emojis' to 'Recent emojis', 'Clear Recent Emojis' to 'Clear recent emojis', and skin tone names like 'Medium-Light' to 'Medium-light'.",
-        "testStrategy": "Open the plugin's settings tab and visually inspect all text. Confirm that all labels, descriptions, and dropdown options use sentence case.",
-        "priority": "high",
-        "dependencies": [
-          6
-        ],
-        "status": "done",
-        "subtasks": []
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Remove UI Toggle from Settings Tab",
+            "description": "Locate the plugin's settings tab definition file and remove the UI component that allows users to toggle the 'insert shortcode in source mode' setting.",
+            "dependencies": [],
+            "details": "In the file responsible for building the settings UI (likely within the `display()` method of a `SettingTab` subclass), find the `.addToggle()` method call associated with the 'insert shortcode in source mode' setting. Delete this entire component definition block.",
+            "status": "done",
+            "testStrategy": "Open the plugin's settings panel in Obsidian. Verify that the toggle switch for 'insert shortcode in source mode' is no longer visible. Check the developer console for any errors that might arise from its removal."
+          },
+          {
+            "id": 2,
+            "title": "Remove Setting Property from Data Interface/Type",
+            "description": "Delete the boolean property corresponding to the removed setting from the plugin's settings data structure, typically an interface or type definition.",
+            "dependencies": [
+              "7.1"
+            ],
+            "details": "Find the TypeScript interface or type definition for the plugin's settings (e.g., `interface QuickEmojiSettings`). Remove the property that was used to store the state of the removed toggle (e.g., `insertShortcodeInSourceMode: boolean;`).",
+            "status": "done",
+            "testStrategy": "After this change, run a TypeScript check or build process. It should fail in any files that still reference this property, which helps identify where further changes are needed."
+          },
+          {
+            "id": 3,
+            "title": "Update Default Settings Object",
+            "description": "Remove the obsolete setting's property from the `DEFAULT_SETTINGS` constant object to ensure new installations and settings resets do not include the legacy key.",
+            "dependencies": [
+              "7.2"
+            ],
+            "details": "Locate the constant object that defines the default values for all settings (e.g., `const DEFAULT_SETTINGS: QuickEmojiSettings = { ... };`). Delete the key-value pair for the 'insert shortcode in source mode' setting from this object. This ensures consistency with the updated settings interface.",
+            "status": "done",
+            "testStrategy": "Temporarily move your `data.json` settings file to force the plugin to load with default settings. Verify that the plugin loads without errors and that the obsolete setting key is not present in the newly created `data.json`."
+          },
+          {
+            "id": 4,
+            "title": "Purge Conditional Logic Relying on the Obsolete Setting",
+            "description": "Search the entire codebase for any usage of the removed setting property and eliminate the conditional logic that depended on it, making the 'insert shortcode' behavior unconditional.",
+            "dependencies": [
+              "7.3"
+            ],
+            "details": "Perform a project-wide search for the setting's property name (e.g., `this.settings.insertShortcodeInSourceMode`). Remove any `if/else` statements or ternary operators that reference this property. The code should be refactored to only execute the logic that was previously in the `if (true)` block, which is to always insert the shortcode.",
+            "status": "done",
+            "testStrategy": "Trigger the emoji suggester in both Source Mode and Live Preview. In both modes, selecting an emoji must result in its shortcode (e.g., `:smile:`) being inserted into the editor. This confirms the old conditional logic is gone."
+          },
+          {
+            "id": 5,
+            "title": "Final Code Cleanup and End-to-End Verification",
+            "description": "Review all modified files for any remaining code artifacts (e.g., unused imports, comments) related to the removed feature and perform a final verification of the plugin's behavior.",
+            "dependencies": [
+              "7.4"
+            ],
+            "details": "Scan the files modified in the previous subtasks. Remove any `import` statements, comments, or variable declarations that are now unused as a result of the feature removal. Re-run the full test suite if one exists.",
+            "status": "done",
+            "testStrategy": "Perform the full test described in the parent task: 1. Open settings and confirm the toggle is gone. 2. Check the developer console for errors during startup and use. 3. Confirm that inserting emojis always produces a shortcode in all editor modes. 4. Confirm that the post-processor (Task 2) correctly renders these shortcodes into glyphs."
+          }
+        ]
       },
       {
         "id": 8,
-        "title": "Phase 0: Use `setHeading()` API for Settings Sections",
-        "description": "Replace manually created HTML headings in the settings tab with the official `new Setting(containerEl).setHeading()` API for creating section dividers.",
-        "details": "Search for any `containerEl.createEl('h3', ...)` or similar manual heading creations within the settings tab. Replace them with `new Setting(containerEl).setHeading().setName('Section name');` to create properly styled and accessible section headings.",
-        "testStrategy": "Open the settings tab and verify that sections are divided by headings that match the standard Obsidian settings UI style, not custom HTML elements.",
+        "title": "Comprehensive End-to-End Testing and Validation",
+        "description": "Conduct comprehensive end-to-end testing of the entire shortcode-first user flow, covering all acceptance criteria and edge cases to ensure a bug-free release.",
+        "details": "Create and execute a test plan covering all functionality on desktop and mobile. Key scenarios include: 1. Insertion and rendering in all editor modes. 2. Boundary checks (code, math, inline code). 3. Skin tone application. 4. Recents/Favorites persistence and UI rendering. 5. Performance on large files with many shortcodes. 6. Run `eslint` or other configured linters to ensure code quality.",
+        "testStrategy": "Systematically execute the test plan, documenting results. Verify that all acceptance criteria from the PRD are met. Monitor the developer console for any runtime errors during testing. The plugin should feel stable and performant.",
         "priority": "high",
         "dependencies": [
-          6
+          3,
+          4,
+          6,
+          7
         ],
         "status": "done",
         "subtasks": []
       },
       {
         "id": 9,
-        "title": "Phase 0: Update README and Documentation",
-        "description": "Update the `README.md` file and any other documentation to reflect the new plugin name ('Quick Emoji') and remove any other non-compliant branding.",
-        "details": "Edit `README.md` to change the main title and any references from 'Obsidian Quick Emoji' to 'Quick Emoji'. Ensure all screenshots and descriptions are up-to-date with the latest UI changes.\n<info added on 2025-06-28T16:04:07.345Z>\nThe manual installation path in README.md has been corrected to `.obsidian/plugins/quick-emoji/`. The Features section was enhanced to highlight performance improvements, including \"Fast & Responsive\" operation, \"intelligent debouncing\" for search, and \"Lightweight startup with on-demand emoji data loading\". `manifest.json` was also verified to have the correct \"Quick Emoji\" name and a compliant description. The plugin ID is confirmed as \"quick-emoji\". All documentation is updated and compliant for community plugin submission.\n</info added on 2025-06-28T16:04:07.345Z>",
-        "testStrategy": "Review the rendered `README.md` on a platform like GitHub. Ensure all text and images accurately reflect the compliant state of the plugin.",
+        "title": "Update User Documentation and README",
+        "description": "Update the plugin's README.md and other user-facing documentation to explain the new shortcode-first behavior and its benefits.",
+        "details": "Edit the `README.md` file. Add a section explaining that the plugin now exclusively uses shortcodes (`:shortcode:`) for storage to improve cross-platform compatibility. Explain that these are automatically rendered as glyphs in Live Preview and Reading modes. Update any screenshots or GIFs to reflect the new user flow.",
+        "testStrategy": "Review the updated `README.md` from the perspective of a new user. Ensure the explanation is clear, concise, and accurately describes the plugin's behavior. Verify that all examples and visuals are up-to-date.",
         "priority": "medium",
         "dependencies": [
-          2
+          8
         ],
         "status": "done",
-        "subtasks": []
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Draft Explanatory Text for Shortcode Behavior",
+            "description": "Write the new documentation content that explains the shift to a shortcode-first storage model. This text will be the source material for the README update.",
+            "dependencies": [],
+            "details": "In a separate text file, draft a clear and concise explanation covering these points:\n1. The plugin now stores emojis as shortcodes (e.g., `:smile:`) instead of Unicode characters in the Markdown source.\n2. The primary benefit is improved cross-platform compatibility and data portability.\n3. Explain that shortcodes are automatically rendered as emoji glyphs in Obsidian's Live Preview and Reading modes, so the user experience remains seamless.\n4. Mention that this prevents issues with file syncing and editing notes on different operating systems.",
+            "status": "done",
+            "testStrategy": "Have a team member read the drafted text to ensure it is understandable for a non-technical user. Verify all key points are covered."
+          },
+          {
+            "id": 2,
+            "title": "Update README.md with New Shortcode Explanation",
+            "description": "Integrate the drafted text from the previous subtask into the main `README.md` file. This involves creating a new section or updating existing ones to reflect the new behavior.",
+            "dependencies": [
+              "9.1"
+            ],
+            "details": "Edit the `README.md` file. Create a new prominent section, perhaps titled 'How It Works: Shortcode Storage', or update the main 'Features' section. Insert the drafted text explaining the shortcode-first approach. Review existing sections and remove any outdated information that refers to storing native emoji glyphs.",
+            "status": "done",
+            "testStrategy": "Review the raw `README.md` file to confirm the new text has been added correctly and outdated information has been removed. Check the formatting in a Markdown previewer."
+          },
+          {
+            "id": 3,
+            "title": "Capture New Screenshots and GIFs",
+            "description": "Create new visual assets (screenshots and/or animated GIFs) that accurately demonstrate the current user flow, showing shortcodes in the editor and rendered glyphs in preview modes.",
+            "dependencies": [],
+            "details": "Using the updated plugin, perform the following actions and capture them:\n1.  **Screenshot 1:** Show a note in Source Mode or Live Preview's source view with visible shortcodes like `:tada:` and `:rocket:`.\n2.  **Screenshot 2 / GIF:** Show the same note in Live Preview or Reading Mode where the shortcodes are rendered as their corresponding emoji glyphs (🎉 and 🚀).\n3.  **GIF:** Capture the process of opening the emoji suggester, selecting an emoji, and it being inserted as a shortcode into the editor.\nEnsure the visuals are clean, focused, and saved in an optimized format (e.g., PNG for screenshots, compressed GIF/MP4 for animations).",
+            "status": "done",
+            "testStrategy": "View the captured images and GIFs to ensure they are clear, high-quality, and accurately represent the plugin's new functionality."
+          },
+          {
+            "id": 4,
+            "title": "Integrate New Visuals into README.md",
+            "description": "Embed the newly created screenshots and GIFs into the `README.md` file, replacing any outdated visuals.",
+            "dependencies": [
+              "9.2",
+              "9.3"
+            ],
+            "details": "Edit the `README.md` file. Locate the sections where visuals are displayed (e.g., 'Usage', 'Features'). Remove any old screenshots or GIFs that show the previous behavior. Add the new visuals captured in the previous subtask using appropriate Markdown image syntax. Ensure the images are placed logically alongside the text that describes them.",
+            "status": "done",
+            "testStrategy": "View the `README.md` on a platform like GitHub or in a local Markdown previewer to confirm that all new images and GIFs render correctly and old ones have been removed."
+          },
+          {
+            "id": 5,
+            "title": "Final Review and Proofread of All Documentation",
+            "description": "Conduct a comprehensive review of the entire updated `README.md` and any other user-facing documentation to ensure clarity, consistency, and accuracy.",
+            "dependencies": [
+              "9.4"
+            ],
+            "details": "Read through the entire `README.md` from the perspective of a brand new user. Check for:\n- Typographical and grammatical errors.\n- Consistency in terminology (e.g., always using 'shortcode').\n- Clarity of the explanation for the new feature.\n- Broken links or images.\n- Overall flow and readability.\nMake any necessary final edits to polish the documentation.",
+            "status": "done",
+            "testStrategy": "Ask someone unfamiliar with the recent changes to read the documentation and confirm they understand how the plugin works. Verify that all instructions are correct and easy to follow."
+          }
+        ]
       },
       {
         "id": 10,
-        "title": "Phase 1: Establish Testing Infrastructure",
-        "description": "Set up a testing framework like Vitest or Jest to enable unit and integration testing. Create initial test files for core utility functions and settings management.",
-        "details": "Install Vitest (`npm install -D vitest`). Create a `vitest.config.ts` file. Create a `tests/` directory. Write an initial test file, e.g., `tests/utils.test.ts`, to test a simple utility function. Configure npm scripts in `package.json` to run tests (e.g., `\"test\": \"vitest\"`).",
-        "testStrategy": "Run `npm test` from the command line and verify that the test suite executes and the initial tests pass. Integrate this into a CI pipeline if possible.",
+        "title": "Perform Plugin Submission Compliance Cleanup",
+        "description": "Perform final cleanup to meet the compliance requirements for the official Obsidian plugin store, including naming conventions, logging, and settings UI standards.",
+        "details": "1. **Naming**: In `manifest.json` and the settings tab header, ensure the plugin is named 'Quick Emoji', not 'Obsidian Quick Emoji'. 2. **Logging**: Search the entire codebase for `console.log()` statements and remove them. 3. **Settings UI**: Review the settings tab to ensure all descriptions use sentence case and headings are correctly implemented. 4. **Copyright**: Update copyright year and information as needed.",
+        "testStrategy": "Manually inspect the `manifest.json` file and the rendered settings tab in Obsidian. Perform a global search for `console.log`. Review the code against the official Obsidian plugin development guidelines to ensure all standards are met.",
         "priority": "medium",
         "dependencies": [
-          1
-        ],
-        "status": "deferred",
-        "subtasks": []
-      },
-      {
-        "id": 11,
-        "title": "Phase 1: Lazy-Load Emoji Search Index",
-        "description": "Optimize the initialization of the `emoji-mart` SearchIndex to improve plugin load time and reduce initial memory usage.",
-        "details": "Currently, `emoji-mart` data might be loaded synchronously on plugin start. Refactor this to be asynchronous and lazy-loaded. The `SearchIndex` should only be initialized when the user first triggers the emoji suggester, not when the plugin itself loads. Cache the initialized index for subsequent uses within the session. `let searchIndex: SearchIndex | null = null; async function getSearchIndex() { if (!searchIndex) { /* initialize here */ } return searchIndex; }`\n<info added on 2025-06-28T15:43:08.473Z>\nBased on research, the recommended implementation involves creating a dedicated service to handle the lazy-loading and caching of the emoji index.\n\nArchitectural Refactoring:\nCreate a new file, `src/emoji-service.ts`, to abstract all emoji-related data handling. This service will manage the initialization and caching of the `SearchIndex` using a singleton pattern, ensuring the expensive initialization runs only once per session. This approach improves separation of concerns, making `main.ts` leaner and providing a clear location for future features like aliases or custom emojis.\n\nImplementation Plan:\n1.  Create `src/emoji-service.ts`:\n    -   This module will contain a module-level variable for the cached `SearchIndex` and an `isInitializing` flag to prevent race conditions.\n    -   Export a single async function, `getSearchIndex()`.\n    -   Inside `getSearchIndex()`, use dynamic `import()` to load `emoji-mart` and `@emoji-mart/data` on demand.\n    -   After the dynamic import, call `init()`, cache the `SearchIndex`, and return it. Subsequent calls will return the cached instance.\n    -   Include error handling that shows an Obsidian `Notice` on failure.\n\n2.  Simplify `main.ts`:\n    -   Remove all `emoji-mart` imports and initialization logic from the `onload()` method. The plugin's startup will now be almost instantaneous.\n\n3.  Update `emoji-suggester.ts`:\n    -   Import and call the new `getSearchIndex()` function at the beginning of the `getSuggestions()` method.\n    -   `await` the result before attempting to use the search index. If initialization fails, return an empty array of suggestions.\n\nVerification:\nUse the Obsidian Developer Tools (\"Performance\" tab) to record a performance profile while reloading the app. Compare the flame chart before and after the changes. The execution time for this plugin's `onload` method should be dramatically reduced, confirming that the initialization has been successfully deferred. Functionally test by triggering the suggester (`:`) and verifying that emojis appear correctly after a brief, one-time loading delay.\n</info added on 2025-06-28T15:43:08.473Z>\n<info added on 2025-06-28T15:48:39.744Z>\nThe implementation is now build-ready after resolving several TypeScript type errors, allowing the production build (`npm run build`) to complete successfully.\n\nKey fixes include:\n1.  The `EmojiMartData` import was moved from `emoji-mart` to the `@emoji-mart/data` package.\n2.  The `SearchIndex` type was set to `any` to ensure compatibility with the dynamic import.\n3.  The emoji data import was corrected to use a namespace import instead of a default export.\n\nThe core lazy-loading implementation is complete and ready for functional testing to verify faster plugin startup, correct suggester behavior on first use, and instant subsequent searches from the cached index.\n</info added on 2025-06-28T15:48:39.744Z>",
-        "testStrategy": "Use Obsidian's developer tools to measure plugin load time before and after the change. Verify that the emoji suggester still works correctly on its first invocation.",
-        "priority": "high",
-        "dependencies": [
-          1
-        ],
-        "status": "done",
-        "subtasks": []
-      },
-      {
-        "id": 12,
-        "title": "Phase 1: Optimize Real-time Emoji Search Performance",
-        "description": "Analyze and optimize the emoji search performance, especially for users typing quickly. This could involve debouncing input or refining the search logic.",
-        "details": "Wrap the search execution in the `getSuggestions` method of the `EditorSuggest` with a debounce function (e.g., from `lodash.debounce` or a simple `setTimeout` implementation) with a delay of ~100-150ms. This prevents search execution on every single keystroke, improving perceived performance.\n<info added on 2025-06-28T16:02:21.908Z>\nDebouncing Implementation Complete & Tested\n\nWhat Was Implemented:\nSmart Debouncing Strategy: Empty queries (just \":\") return immediately to show recent emojis instantly. Text queries are debounced with a 150ms delay to prevent excessive search calls. Timer management clears previous timers when new input arrives.\nCode Architecture Improvements: The core search logic was extracted into a `performSearch()` method for reusability. Debounce timer management was added for `debounceTimer` and `lastSearchPromise` tracking. Promise cancellation is now handled to ensure only the latest search resolves, preventing race conditions. A `close()` method was added for proper cleanup to prevent memory leaks.\n\nPerformance Benefits:\nSearch calls are reduced, as searches no longer execute on every keystroke. The UI is more responsive, allowing users to type quickly without lag. The \":\" trigger shows recent emojis immediately, and the 150ms delay provides a smooth typing experience.\n\nTechnical Implementation Details:\nThe debounce delay is set to 150ms. Race condition prevention is handled using promise tracking. Memory leaks are prevented by proper timer cleanup in the `close()` method. The implementation includes a graceful fallback to empty results on search errors.\n\nVerification:\nThe build passes without errors and TypeScript compilation is successful. The feature is ready for functional testing in Obsidian.\n\nExpected User Experience:\n1. Typing \":\" will show recent emojis instantly.\n2. Starting to type a query will trigger a smooth, debounced search after 150ms.\n3. Typing quickly will not cause lag; only the final query will be searched.\n4. The overall emoji selection experience is responsive and smooth.\n</info added on 2025-06-28T16:02:21.908Z>",
-        "testStrategy": "Manually test by typing search queries quickly in the editor. The UI should remain responsive and not lag. Add logging to a debounced function to ensure it's not firing excessively.",
-        "priority": "high",
-        "dependencies": [
-          11
-        ],
-        "status": "done",
-        "subtasks": []
-      },
-      {
-        "id": 13,
-        "title": "Phase 1: Implement Comprehensive Resource Cleanup on Unload",
-        "description": "Implement robust resource cleanup in the `onunload` method to ensure all event listeners, intervals, and other resources are properly removed when the plugin is disabled or updated.",
-        "details": "Review the `onunload` method in `main.ts`. Ensure that for every `this.register...` call in `onload`, there is a corresponding cleanup. Explicitly nullify large objects like the emoji index to free up memory. `onunload() { console.log('unloading plugin'); this.app.workspace.off(...); }`",
-        "testStrategy": "Enable, use, and then disable the plugin multiple times. Use developer tools to check for detached event listeners or memory leaks. Verify no errors appear in the console upon unload.",
-        "priority": "medium",
-        "dependencies": [
-          1
-        ],
-        "status": "done",
-        "subtasks": []
-      },
-      {
-        "id": 14,
-        "title": "Phase 1: Enhance Error Handling and User Feedback",
-        "description": "Improve error handling by wrapping critical operations, such as loading data or interacting with the Obsidian API, in try-catch blocks and providing user-facing feedback via `new Notice()`.",
-        "details": "Identify critical code paths, such as `loadData()` and `saveData()`. Wrap them in `try-catch` blocks. In the `catch` block, log the full error to the console and show a user-friendly message using `new Notice('Failed to load emoji history. See console for details.')`.\n<info added on 2025-06-29T12:33:52.492Z>\nCode review completed. The majority of error handling is already implemented. The final two required changes are to add try-catch blocks around `this.loadData()` in the `loadSettings()` method and around `this.saveData()` in the `saveSettings()` method. Both should display a user-friendly notice on failure.\n</info added on 2025-06-29T12:33:52.492Z>\n<info added on 2025-06-29T12:35:55.700Z>\nAdded missing error handling for plugin data operations.\nChanges made:\n1. Added `Notice` import to main.ts.\n2. Wrapped `this.loadData()` in `loadSettings()` with a try-catch block. On failure, it shows a user notice \"Quick Emoji: Failed to load plugin settings. Using defaults.\" and falls back to DEFAULT_SETTINGS.\n3. Wrapped `this.saveData()` in `saveSettings()` with a try-catch block. On failure, it shows a user notice \"Quick Emoji: Failed to save plugin settings. Changes may be lost.\" and logs errors in development mode.\nError handling is now comprehensive across the entire plugin.\n</info added on 2025-06-29T12:35:55.700Z>",
-        "testStrategy": "Manually corrupt the `data.json` file to simulate a loading error and verify that a notice appears. Write unit tests that mock API failures and assert that the error handling logic is triggered.",
-        "priority": "medium",
-        "dependencies": [],
-        "status": "done",
-        "subtasks": []
-      },
-      {
-        "id": 15,
-        "title": "Phase 2: Improve Suggester Visual Design and Theme Integration",
-        "description": "Improve the visual design and user interaction of the emoji suggester popup, potentially adding subtle animations and better alignment with Obsidian themes.",
-        "details": "Add CSS transitions for the suggester's appearance and for hover effects on list items. Use Obsidian's CSS variables (e.g., `--interactive-accent`, `--background-secondary`) in the plugin's `styles.css` to ensure the UI adapts to user themes. For example: `.suggestion-item.is-selected { background-color: var(--interactive-accent); }`",
-        "testStrategy": "Test the plugin with several popular light and dark themes (e.g., default, Minimal, Things) to ensure the suggester UI is legible and aesthetically pleasing. Verify animations are smooth and not distracting.",
-        "priority": "medium",
-        "dependencies": [
-          7,
           8
         ],
         "status": "done",
-        "subtasks": []
-      },
-      {
-        "id": 16,
-        "title": "Phase 2: Optimize Mobile Experience and Touch Interactions",
-        "description": "Enhance the mobile experience by improving touch interactions, ensuring tap targets are sufficiently large, and optimizing the layout for smaller screens.",
-        "details": "In `styles.css`, use media queries (`@media (max-width: 768px)`) to apply mobile-specific styles. Increase the `padding` and `min-height` of suggestion items to make them easier to tap. Test scrolling behavior on touch devices.",
-        "testStrategy": "Test thoroughly on iOS and Android devices using the Obsidian mobile app. Verify that selecting emojis via touch is easy and reliable, and that the suggester does not obstruct the view of the text being edited.",
-        "priority": "medium",
-        "dependencies": [
-          15
-        ],
-        "status": "deferred",
-        "subtasks": []
-      },
-      {
-        "id": 17,
-        "title": "Phase 2: Implement Customizable Keyboard Trigger",
-        "description": "Allow users to customize the trigger character for the emoji suggester, instead of being hardcoded to ':'.",
-        "details": "Add a new `TextComponent` setting in the settings tab: `new Setting(containerEl).setName('Trigger character').addText(text => text.setValue(this.plugin.settings.trigger).onChange(async val => { this.plugin.settings.trigger = val; await this.plugin.saveSettings(); }));`. Update the `EditorSuggest` registration to use this setting value as the trigger.",
-        "testStrategy": "Change the trigger character in settings (e.g., to '#'). Verify that typing '#' now opens the emoji suggester and ':' no longer does. Test with various symbols.",
-        "priority": "low",
-        "dependencies": [
-          8
-        ],
-        "status": "deferred",
-        "subtasks": []
-      },
-      {
-        "id": 18,
-        "title": "Phase 3: Implement Emoji Favorites System",
-        "description": "Implement a system for users to mark emojis as 'favorites' for even quicker access. Favorites should appear at the top of the suggestion list, above recent emojis.",
-        "details": "Extend the settings data structure to include a `favorites: string[]` array. In the suggester UI, add a 'favorite' icon (e.g., a star) to each emoji. Clicking it adds/removes the emoji's shortcode from the `favorites` array in settings. Modify the `getSuggestions` logic to prepend favorited emojis to the results.\n<info added on 2025-06-29T12:40:26.682Z>\nSuccessfully implemented the full emoji favorites system.\n\nChanges made:\n\n1. Settings Structure:\n   - Added `favorites: string[]` to QuickEmojiSettings interface\n   - Updated DEFAULT_SETTINGS to include empty favorites array\n\n2. Emoji Suggester Enhancements:\n   - Modified `performSearch()` to show favorite emojis at the top of all suggestions\n   - Added deduplication logic to prevent favorites from appearing twice\n   - Updated `renderSuggestion()` to include star icons for each emoji\n   - Added click handlers for stars to toggle favorite status with visual feedback\n\n3. Settings Tab Features:\n   - Added new \"Favorite emojis\" section above recent emojis\n   - Implemented `renderFavoriteEmojis()` method to display favorited emojis\n   - Added \"Clear favorite emojis\" button for easy management\n   - Made display() method async to handle emoji lookups\n\n4. Visual Design:\n   - Added comprehensive CSS styling for favorites functionality\n   - Star icons with hover effects and visual states (★ vs ☆)\n   - Yellow accent colors and borders for favorited items\n   - Smooth transitions and micro-interactions\n\nUser Experience:\n- Favorites appear at the top of suggestions (above recent emojis)\n- Click star in suggester to instantly add/remove favorites\n- Visual feedback shows favorited state with yellow styling\n- Settings tab shows favorites with click-to-insert functionality\n- Persistent storage through plugin settings system\n</info added on 2025-06-29T12:40:26.682Z>",
-        "testStrategy": "Favorite several emojis. Close and reopen Obsidian to ensure favorites persist. Trigger the suggester and verify that favorited emojis appear at the very top of the list.",
-        "priority": "medium",
-        "dependencies": [
-          13,
-          14
-        ],
-        "status": "done",
-        "subtasks": []
-      },
-      {
-        "id": 19,
-        "title": "Phase 3: Add Support for Emoji Aliases",
-        "description": "Allow users to create custom categories or aliases for emojis, enabling personalized organization and search.",
-        "details": "This is a complex feature. Start with aliases. Add a new settings object `aliases: { [alias: string]: string }` where the key is the custom alias and the value is the native emoji shortcode. In the search logic, augment the search data with these aliases. For example, if a user aliases ':thumbsup:' as ':done:', searching for 'done' should return the thumbs-up emoji.",
-        "testStrategy": "Create a new alias in settings, for example, mapping ':work:' to 'U+1F4BB' (laptop emoji). Save settings. In the editor, type the trigger and 'work' and verify the laptop emoji appears as a suggestion.",
-        "priority": "low",
-        "dependencies": [
-          18
-        ],
-        "status": "deferred",
-        "subtasks": []
-      },
-      {
-        "id": 20,
-        "title": "Phase 4: Implement Custom Emoji Support (Image Uploads)",
-        "description": "Enable users to upload their own images (PNGs/GIFs) to use as custom emojis within the Obsidian editor, storing them within the vault.",
-        "details": "Create a setting for the user to specify a folder in their vault for custom emojis (e.g., `.obsidian/plugins/quick-emoji/custom`). Add a UI in settings to manage these images. The suggester will need to be updated to search this folder and render image previews. Insertion would involve embedding the image using the Obsidian format `![[path/to/image.png]]`.",
-        "testStrategy": "Configure a custom emoji folder. Add a PNG file to it. Trigger the suggester and search for the filename. Verify the image appears as a suggestion and that selecting it inserts the correct markdown embed link into the editor.",
-        "priority": "low",
-        "dependencies": [
-          1,
-          13
-        ],
-        "status": "deferred",
-        "subtasks": []
-      },
-      {
-        "id": 21,
-        "title": "Code Quality: Extract Duplicate Helper Functions to Shared Utility Module",
-        "description": "Create a new `src/utils.ts` module to eliminate duplicate `getActiveEditor()` and `getEmojiWithSkin()` functions that were duplicated between `settings-tab.ts` and `emoji-suggester.ts`. This improves maintainability by centralizing common functionality.",
-        "details": "Create a new file at `src/utils.ts`. Locate the `getActiveEditor()` and `getEmojiWithSkin()` functions, which are currently duplicated in `src/settings-tab.ts` and `src/emoji-suggester.ts`. Move the canonical implementation of both functions into `src/utils.ts` and export them. Then, refactor `settings-tab.ts` and `emoji-suggester.ts` to import these functions from the new utility module, removing the local, duplicated versions. This ensures a single source of truth for these common helpers.",
-        "testStrategy": "Perform a full regression test. Verify that the emoji suggester still triggers and correctly inserts emojis into the editor. Check the settings tab to ensure that any UI elements or actions that rely on these helpers (e.g., emoji previews) continue to function as expected. Specifically, confirm that emojis with skin tone variations render correctly in both the suggester and settings. The goal is to confirm that this refactoring has not introduced any functional regressions.",
-        "status": "done",
-        "dependencies": [
-          6,
-          8
-        ],
-        "priority": "medium",
-        "subtasks": []
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Update manifest.json with Compliant Plugin Name",
+            "description": "Modify the plugin's manifest file to use the official name 'Quick Emoji' instead of 'Obsidian Quick Emoji' to comply with Obsidian's naming conventions for store submission.",
+            "dependencies": [],
+            "details": "Open the `manifest.json` file in the root of the project. Locate the `name` key and change its value from 'Obsidian Quick Emoji' to 'Quick Emoji'. Verify that other metadata like `id` and `author` are correct and do not contain the word 'Obsidian'.",
+            "status": "done",
+            "testStrategy": "After making the change, load the plugin in Obsidian's development mode. Go to the 'Community Plugins' list and verify that the plugin is listed as 'Quick Emoji'."
+          },
+          {
+            "id": 2,
+            "title": "Remove All `console.log` Statements from Codebase",
+            "description": "Perform a global search across all source files and remove any remaining `console.log()` statements used for debugging, as these are not permitted in plugins submitted to the official store.",
+            "dependencies": [],
+            "details": "Use your IDE's global search feature or a command-line tool like `grep` to find all occurrences of `console.log(`. Review each occurrence and remove the entire line. Be careful not to remove other console methods like `console.error` if they are used for legitimate user-facing error reporting.",
+            "status": "done",
+            "testStrategy": "Perform a final global search for `console.log` after the cleanup to ensure no instances remain in the codebase. Run the plugin and check the developer console to confirm no new logs are being printed during normal operation."
+          },
+          {
+            "id": 3,
+            "title": "Standardize Settings Tab UI Text and Headings",
+            "description": "Review and update the settings tab UI to meet submission standards. This includes setting the correct header name, ensuring all setting descriptions use sentence case, and verifying heading structures are correct.",
+            "dependencies": [],
+            "details": "In the file that implements the settings tab (e.g., `settings.ts`), find the code that adds the main header and ensure it displays 'Quick Emoji'. Then, review every `.setDesc()` call for each setting. Rewrite the descriptions to use proper sentence case (starting with a capital letter and ending with a period). Check that any section headings are implemented using `.addHeading()`.",
+            "status": "done",
+            "testStrategy": "Open the plugin's settings tab in Obsidian. Visually inspect the main header. Read through every setting's name and description to confirm the text formatting is correct and consistent."
+          },
+          {
+            "id": 4,
+            "title": "Update Copyright Year and Information",
+            "description": "Update the copyright year in the project's license file and any other relevant metadata files to reflect the current year.",
+            "dependencies": [],
+            "details": "Open the `LICENSE` file and update the copyright year to the current year. Also, check `package.json` and any source file headers that may contain copyright information and update them as necessary.",
+            "status": "done",
+            "testStrategy": "Manually inspect the `LICENSE` file and `package.json` to confirm the copyright year has been updated correctly."
+          },
+          {
+            "id": 5,
+            "title": "Final Compliance Review Against Official Guidelines",
+            "description": "Perform a final check of the entire plugin against the official Obsidian plugin submission guidelines to ensure all requirements have been met and nothing was overlooked in the previous cleanup steps.",
+            "dependencies": [
+              "10.1",
+              "10.2",
+              "10.3",
+              "10.4"
+            ],
+            "details": "Read through the latest version of the Obsidian sample plugin repository's submission guidelines. Create a mental checklist and verify each point for the 'Quick Emoji' plugin. Pay special attention to data storage locations (using `.obsidian/plugins/your-plugin-id/data.json`), icon requirements, and README content.",
+            "status": "done",
+            "testStrategy": "Simulate the submission process by reviewing the plugin as if you were a member of the Obsidian review team. Cross-reference each feature and file against the official submission checklist to ensure 100% compliance."
+          }
+        ]
       }
     ],
     "metadata": {
-      "created": "2025-06-28T13:14:28.762Z",
-      "updated": "2025-06-30T13:50:40.900Z",
+      "created": "2025-08-13T15:20:10.808Z",
+      "updated": "2025-08-13T17:26:35.295Z",
       "description": "Tasks for master context"
     }
   }

@@ -9,9 +9,9 @@ import {
 
 import { type Emoji } from '@emoji-mart/data'
 
-import { getSearchIndex } from './emoji-service'
-import type QuickEmojiPlugin from './main'
-import { getActiveEditor, getEmojiWithSkin } from './utils'
+import type QuickEmojiPlugin from '../main'
+import { getSearchIndex } from '../services/emoji-service'
+import { getActiveEditor, getEmojiWithSkin } from '../utils'
 
 // Emoji category definitions
 const EMOJI_CATEGORIES = [
@@ -101,10 +101,13 @@ export class EmojiSuggester extends EditorSuggest<EmojiSuggestion> {
 		// Rule 2: Only show if colon is the "first word", not between words
 		// Check what comes before the colon
 		const beforeColon = subString.substring(0, colonIndex)
-		
+
 		// If there's any non-whitespace character immediately before the colon,
 		// then the colon is "between" words and should not trigger
-		if (beforeColon.length > 0 && !TRAILING_WHITESPACE_REGEX.test(beforeColon)) {
+		if (
+			beforeColon.length > 0 &&
+			!TRAILING_WHITESPACE_REGEX.test(beforeColon)
+		) {
 			return null
 		}
 
@@ -146,7 +149,7 @@ export class EmojiSuggester extends EditorSuggest<EmojiSuggestion> {
 							results.push({
 								emoji,
 								isRecent: this.plugin.recentEmojis.some(
-									(recent) => recent.name === emoji.name
+									(recentId) => recentId === emoji.id
 								),
 								isFavorite: true,
 								isSearchResult: false,
@@ -167,15 +170,38 @@ export class EmojiSuggester extends EditorSuggest<EmojiSuggestion> {
 
 		// Add recent emojis only if there's no search query (and they're not already favorites)
 		if (!query && this.plugin.recentEmojis.length > 0) {
-			for (const emoji of this.plugin.recentEmojis) {
+			for (const emojiId of this.plugin.recentEmojis) {
 				// Don't duplicate favorites in recent section
-				if (!this.plugin.settings.favorites.includes(emoji.id)) {
-					results.push({
-						emoji,
-						isRecent: true,
-						isFavorite: false,
-						isSearchResult: false,
-					})
+				if (!this.plugin.settings.favorites.includes(emojiId)) {
+					try {
+						const searchIndex = await getSearchIndex()
+						// Look up the emoji by ID using the same searchIndex
+						const emojiResults = await searchIndex.search(emojiId)
+						if (emojiResults && emojiResults.length > 0) {
+							// Find exact match by ID
+							const exactMatch = emojiResults.find(
+								(emoji: Emoji) =>
+									emoji.id === emojiId ||
+									emoji.name === emojiId
+							)
+							const emoji = exactMatch || emojiResults[0]
+
+							results.push({
+								emoji,
+								isRecent: true,
+								isFavorite: false,
+								isSearchResult: false,
+							})
+						}
+					} catch (error) {
+						if (process.env.NODE_ENV === 'development') {
+							console.error(
+								'Failed to load recent emoji:',
+								emojiId,
+								error
+							)
+						}
+					}
 				}
 			}
 		}
@@ -231,7 +257,7 @@ export class EmojiSuggester extends EditorSuggest<EmojiSuggestion> {
 				(emoji) => ({
 					emoji,
 					isRecent: this.plugin.recentEmojis.some(
-						(recent) => recent.name === emoji.name
+						(recentId) => recentId === emoji.id
 					),
 					isFavorite: this.plugin.settings.favorites.includes(
 						emoji.id
@@ -415,15 +441,19 @@ export class EmojiSuggester extends EditorSuggest<EmojiSuggestion> {
 
 		const { emoji } = suggestion
 
-		// Get emoji with proper skin tone
-		const emojiChar = getEmojiWithSkin(emoji, this.plugin.settings.skin)
+		// Always insert shortcode format
+		// Prefer emoji.id if present; fall back to name. Ensure surrounded by colons.
+		const shortcode = (emoji.id || emoji.name || '').replace(/\s+/g, '_')
+		const textToInsert = shortcode ? `:${shortcode}:` : `:${emoji.name}:` // Fallback to name if no id
 
-		// Save in recents only if we have a valid emoji character (not a shortcode)
-		if (emojiChar && !emojiChar.startsWith(':')) {
-			this.plugin.saveRecentEmoji(emoji)
-		}
+		// Always save in recents when selecting an emoji
+		this.plugin.saveRecentEmoji(emoji)
 
 		// Replace the text in the editor
-		editor.replaceRange(emojiChar, this.context!.start, this.context!.end)
+		editor.replaceRange(
+			textToInsert,
+			this.context!.start,
+			this.context!.end
+		)
 	}
 }
