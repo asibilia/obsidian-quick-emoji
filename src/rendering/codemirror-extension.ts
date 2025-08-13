@@ -55,22 +55,30 @@ export class EmojiCodeMirrorExtension {
 			return class EmojiDecorator {
 				decorations: DecorationSet
 				emojiMap: Record<string, Emoji> = {}
+				private lastMode: string | null = null
 
 				constructor(view: ViewUpdate['view']) {
 					this.decorations = this.buildDecorations(view)
 				}
 
 				update(update: ViewUpdate) {
+					// Always rebuild for document changes or viewport changes
 					if (update.docChanged || update.viewportChanged) {
 						this.decorations = this.buildDecorations(update.view)
+						return
 					}
-					// Also rebuild when switching modes
+
+					// Check for mode changes and rebuild immediately
 					const activeView =
 						pluginInstance.app.workspace.getActiveViewOfType(
 							MarkdownView
 						)
 					if (activeView) {
-						this.decorations = this.buildDecorations(update.view)
+						const currentMode = activeView.getMode()
+						if (this.lastMode !== currentMode) {
+							this.lastMode = currentMode
+							this.decorations = this.buildDecorations(update.view)
+						}
 					}
 				}
 
@@ -140,12 +148,13 @@ export class EmojiCodeMirrorExtension {
 					pluginInstance: QuickEmojiPlugin
 				): void {
 					const text = view.state.doc.sliceString(from, to)
-					let match
 
-					// Reset regex for this range
-					SHORTCODE_REGEX.lastIndex = 0
+					// Use matchAll for global matching since regex no longer has 'g' flag
+					const matches = text.matchAll(
+						new RegExp(SHORTCODE_REGEX, 'g')
+					)
 
-					while ((match = SHORTCODE_REGEX.exec(text)) !== null) {
+					for (const match of matches) {
 						const start = from + match.index
 						const end = start + match[0].length
 						const shortcodeId = match[1]

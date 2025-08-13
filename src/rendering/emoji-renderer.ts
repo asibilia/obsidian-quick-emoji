@@ -7,7 +7,7 @@ import { getEmojiWithSkin } from '../utils'
  * Regular expression for matching emoji shortcodes
  * Matches patterns like :smile:, :thumbs_up:, etc.
  */
-export const SHORTCODE_REGEX = /:([a-zA-Z0-9_+-]+):/g
+export const SHORTCODE_REGEX = /:([a-zA-Z0-9_+-]+):/
 
 /**
  * Shared emoji map for efficient lookup

@@ -32,6 +32,21 @@ const EMOJI_CATEGORIES = [
 // Regex for checking trailing whitespace (extracted to avoid recompilation)
 const TRAILING_WHITESPACE_REGEX = /\s$/
 
+/**
+ * Sanitize a string to be a valid emoji shortcode
+ * @param str - The string to sanitize
+ * @returns A valid shortcode string
+ */
+function sanitizeShortcode(str: string): string {
+	return (str || '')
+		.trim()
+		.toLowerCase()
+		.replace(/[^a-z0-9_+-]/g, '_') // Replace non-allowed characters with underscore
+		.replace(/_{2,}/g, '_') // Collapse multiple underscores to single
+		.replace(/^_+|_+$/g, '') // Trim leading/trailing underscores
+		.slice(0, 50) // Limit length to prevent overly long shortcodes
+}
+
 type EmojiSuggestion = {
 	emoji: Emoji
 	isRecent: boolean
@@ -442,9 +457,11 @@ export class EmojiSuggester extends EditorSuggest<EmojiSuggestion> {
 		const { emoji } = suggestion
 
 		// Always insert shortcode format
-		// Prefer emoji.id if present; fall back to name. Ensure surrounded by colons.
-		const shortcode = (emoji.id || emoji.name || '').replace(/\s+/g, '_')
-		const textToInsert = shortcode ? `:${shortcode}:` : `:${emoji.name}:` // Fallback to name if no id
+		// Prefer emoji.id if present; fall back to name. Sanitize for valid shortcode format.
+		const shortcode = emoji.id
+			? sanitizeShortcode(emoji.id)
+			: sanitizeShortcode(emoji.name)
+		const textToInsert = shortcode ? `:${shortcode}:` : ':emoji:' // Final fallback
 
 		// Always save in recents when selecting an emoji
 		this.plugin.saveRecentEmoji(emoji)

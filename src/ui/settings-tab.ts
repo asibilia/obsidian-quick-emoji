@@ -114,11 +114,11 @@ export class QuickEmojiSettingTab extends PluginSettingTab {
 								title: `Insert ${emoji.name}`,
 							})
 
-							// Add click handler to insert the emoji
+							// Add click handler to insert the emoji shortcode
 							emojiEl.addEventListener('click', () => {
 								const editor = getActiveEditor(this.app)
 								if (editor) {
-									editor.replaceSelection(emojiChar)
+									editor.replaceSelection(`:${favoriteId}:`)
 								}
 							})
 						}

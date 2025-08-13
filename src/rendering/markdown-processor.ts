@@ -56,12 +56,8 @@ export class EmojiMarkdownProcessor {
 	private async processTextNode(textNode: Text): Promise<void> {
 		const original = textNode.nodeValue || ''
 
-		// Reset regex lastIndex since we use 'g' flag
-		SHORTCODE_REGEX.lastIndex = 0
+		// Test if the text contains shortcodes
 		if (!SHORTCODE_REGEX.test(original)) return
-
-		// Reset again for the actual replacement
-		SHORTCODE_REGEX.lastIndex = 0
 
 		const frag = document.createDocumentFragment()
 		let lastIndex = 0
@@ -74,29 +70,41 @@ export class EmojiMarkdownProcessor {
 			element: HTMLElement | string
 		}> = []
 
-		original.replace(
-			SHORTCODE_REGEX,
-			(match, p1: string, offset: number) => {
-				const emojiId = String(p1)
+		// Use matchAll for global matching since regex no longer has 'g' flag
+		const matches = original.matchAll(new RegExp(SHORTCODE_REGEX, 'g'))
 
-				// Create promise for emoji resolution
-				const promise = this.resolveEmojiElement(emojiId).then(
-					(element) => {
-						replacements.push({
-							offset,
-							length: match.length,
-							element: element || match, // Fallback to original text if resolution fails
-						})
-					}
-				)
+		for (const match of matches) {
+			const emojiId = String(match[1])
+			const offset = match.index!
 
-				promises.push(promise)
-				return match
-			}
-		)
+			// Create promise for emoji resolution
+			const promise = this.resolveEmojiElement(emojiId).then(
+				(element) => {
+					replacements.push({
+						offset,
+						length: match[0].length,
+						element: element || match[0], // Fallback to original text if resolution fails
+					})
+				}
+			)
 
-		// Wait for all emoji resolutions to complete
-		await Promise.all(promises)
+			promises.push(promise)
+		}
+
+		// Wait for all emoji resolutions to complete, handling failures gracefully
+		const results = await Promise.allSettled(promises)
+
+		// Check for any failed promises and log errors in development
+		if (process.env.NODE_ENV === 'development') {
+			results.forEach((result) => {
+				if (result.status === 'rejected') {
+					console.error(
+						'Failed to resolve emoji element:',
+						result.reason
+					)
+				}
+			})
+		}
 
 		// Sort replacements by offset to process in order
 		replacements.sort((a, b) => a.offset - b.offset)

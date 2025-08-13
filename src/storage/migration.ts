@@ -26,13 +26,9 @@ export class EmojiStorageMigration {
 			const parsedData = JSON.parse(recentData)
 
 			// Handle different data formats
-			if (!Array.isArray(parsedData)) {
-				return parsedData || []
-			}
+			if (!Array.isArray(parsedData)) return []
 
-			if (parsedData.length === 0) {
-				return []
-			}
+			if (parsedData.length === 0) return []
 
 			// Check if we have old format (array of Emoji objects)
 			const firstItem = parsedData[0]
