@@ -1,0 +1,11 @@
+# Task ID: 6
+# Title: Update Recent Emojis to Use Insertion Helper
+# Status: pending
+# Dependencies: 3, 4
+# Priority: medium
+# Description: Modify the click handlers for the 'Recent Emojis' list in the settings tab to use the centralized insertion helper for consistent behavior.
+# Details:
+In `src/ui/settings-tab.ts`, find the code that generates the list of recent emojis and attaches click handlers. In the `onClick` callback for each emoji element, call the centralized `insertEmoji()` helper. You will need to get a reference to the active editor, which can be done via `this.app.workspace.activeEditor?.editor`, and pass it along with the emoji object and the setting `this.plugin.settings.insertionFormat`.
+
+# Test Strategy:
+1. Set format to 'Unicode'. Open settings, click a recent emoji, and verify the native character is inserted into the currently active note. 2. Switch format to 'Shortcode'. Repeat the test and verify the shortcode is inserted instead.

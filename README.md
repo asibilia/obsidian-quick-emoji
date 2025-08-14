@@ -6,7 +6,7 @@ A plugin for [Obsidian](https://obsidian.md) that enables quick, in-editor emoji
 
 ## Features
 
-- **Shortcode-First Storage**: Stores emojis as `:shortcode:` format for maximum compatibility
+- **Flexible Insertion Format**: Choose between Unicode emoji or shortcode insertion to match your workflow
 - **Smart Rendering**: Displays shortcodes in Source Mode, emojis in Live Preview/Reading modes
 - **Cross-Platform Compatible**: Works seamlessly across different operating systems and devices
 - **Fast & Responsive**: Optimized with lazy loading and debounced search for smooth performance
@@ -18,15 +18,31 @@ A plugin for [Obsidian](https://obsidian.md) that enables quick, in-editor emoji
 - Configure the number of recent emojis to remember
 - Lightweight startup with on-demand emoji data loading
 
-## How It Works: Shortcode Storage
+## How It Works: Insertion Format Options
 
-Quick Emoji uses a **shortcode-first approach** that ensures your emoji data remains consistent and portable across different platforms and devices.
+Quick Emoji gives you the flexibility to choose how emojis are inserted into your notes, allowing you to pick the approach that best fits your workflow.
+
+### Insertion Format Options
+
+#### Unicode Emoji (Default)
+
+- **What it is**: Inserts native emoji characters directly (🙂, 🚀, ❤️)
+- **Best for**: Users who want emojis visible in all Obsidian views immediately
+- **Pros**: Universal visibility, immediate visual feedback, works everywhere
+- **Cons**: May not sync perfectly across all devices/platforms
+
+#### Shortcode Format
+
+- **What it is**: Inserts text codes (`:smile:`, `:rocket:`, `:heart:`) that render as emojis
+- **Best for**: Users who want maximum compatibility and portability
+- **Pros**: Perfect cross-platform sync, version control friendly, future-proof
+- **Cons**: Only renders as emojis in Live Preview and Reading modes
 
 ### What are Shortcodes?
 
 Shortcodes are text representations of emojis in the format `:emoji_name:` (e.g., `:smile:`, `:rocket:`, `:heart:`). This is the same format used by platforms like GitHub, Discord, and Slack.
 
-### Benefits of Shortcode Storage
+### Benefits of Shortcode Format
 
 - **Cross-Platform Compatibility**: Your notes will display correctly on any device or operating system
 - **Future-Proof**: Shortcodes remain readable even if emoji rendering changes
@@ -34,24 +50,34 @@ Shortcodes are text representations of emojis in the format `:emoji_name:` (e.g.
 - **Search-Friendly**: You can search for `:smile:` to find all instances of that emoji
 - **No Sync Issues**: Eliminates emoji rendering problems when syncing between devices
 
-### Smart Display Modes
+### Smart Display Modes (Shortcode Format Only)
+
+When using shortcode format, Quick Emoji provides intelligent rendering across different Obsidian modes:
 
 - **Source Mode**: Shows the actual shortcodes (`:wave:`, `:tada:`) for precise editing
 - **Live Preview Mode**: Automatically renders shortcodes as emoji glyphs (👋, 🎉) while you type
 - **Reading Mode**: Displays beautiful emoji glyphs for the best reading experience
 
-This approach gives you the benefits of both worlds: reliable, portable storage with beautiful visual rendering.
+This gives you the benefits of both worlds: reliable, portable storage with beautiful visual rendering.
 
 ## Usage
 
 1. Type `:` in any editor to activate the emoji suggester
 2. Continue typing to search for specific emojis (e.g., `:smile`, `:rocket`)
 3. Use arrow keys to navigate and Enter to select an emoji
-4. The selected emoji will be inserted as a shortcode (e.g., `:smile:`)
-5. In Live Preview and Reading modes, shortcodes automatically render as emoji glyphs
-6. Click the star icon (⭐) next to any emoji to add it to your favorites for quick access
+4. The selected emoji will be inserted according to your chosen format:
+   - **Unicode format**: Direct emoji character (🙂)
+   - **Shortcode format**: Text code (`:smile:`) that renders as emoji in Live Preview/Reading modes
+5. Click the star icon (⭐) next to any emoji to add it to your favorites for quick access
+6. Access recent and favorite emojis from the plugin settings for quick insertion
 
 ### Viewing Your Emojis
+
+The viewing experience depends on your chosen insertion format:
+
+**Unicode Format**: Emojis appear as native characters (👋, ❤️) in all modes
+
+**Shortcode Format**:
 
 - **Source Mode**: See the raw shortcodes (`:wave:`, `:heart:`) for editing
 - **Live Preview**: See emoji glyphs (👋, ❤️) while typing, shortcodes when actively editing
@@ -59,6 +85,9 @@ This approach gives you the benefits of both worlds: reliable, portable storage 
 
 ## Settings
 
+- **Insertion format**: Choose how emojis are inserted into your notes:
+  - **Unicode emoji**: Insert as native characters (🙂) - visible in all views
+  - **Shortcode**: Insert as text codes (`:smile:`) - rendered in Reading Mode
 - **Default skin tone**: Choose from Default, Light, Medium-Light, Medium, Medium-Dark, or Dark
 - **Recent emoji count**: Set the number of recent emojis to remember (5-50)
 - **Favorite emojis**: View and manage your starred favorite emojis (click to insert)

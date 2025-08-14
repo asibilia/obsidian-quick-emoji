@@ -1,0 +1,11 @@
+# Task ID: 2
+# Title: Ensure Setting Persistence and Migration
+# Status: pending
+# Dependencies: 1
+# Priority: high
+# Description: Implement the necessary logic to correctly load the new `insertionFormat` setting for all users and persist their choice across Obsidian sessions.
+# Details:
+In `src/main.ts`, review the `loadSettings()` method. The standard implementation `this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());` should suffice. This pattern correctly handles migration for existing users by merging their saved settings (which lack the new key) with the `DEFAULT_SETTINGS` object, thereby applying the 'unicode' default. The `saveSettings()` method should already handle saving the entire settings object, which will now include the new property.
+
+# Test Strategy:
+1. Test with a fresh install (no settings file) and verify the format defaults to 'unicode'. 2. Test with a pre-existing settings file (without the `insertionFormat` key) and verify the setting defaults to 'unicode' on plugin load. 3. Change the setting, reload the plugin, and confirm the chosen setting is correctly loaded.

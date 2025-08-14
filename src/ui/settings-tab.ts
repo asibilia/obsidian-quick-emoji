@@ -4,20 +4,23 @@ import type { Emoji } from '@emoji-mart/data'
 
 import type QuickEmojiPlugin from '../main'
 import { getSearchIndex } from '../services/emoji-service'
-import { getActiveEditor, getEmojiWithSkin } from '../utils'
+import { getActiveEditor, getEmojiWithSkin, insertEmoji } from '../utils'
 
 export type SkinSetting = 0 | 1 | 2 | 3 | 4 | 5
+export type InsertionFormat = 'unicode' | 'shortcode'
 
 export interface QuickEmojiSettings {
 	skin: SkinSetting
 	recentCount: number
 	favorites: string[] // Array of emoji IDs/shortcodes that are favorited
+	insertionFormat: InsertionFormat // How emojis are inserted into the editor
 }
 
 export const DEFAULT_SETTINGS: QuickEmojiSettings = {
 	skin: 0,
 	recentCount: 20,
 	favorites: [],
+	insertionFormat: 'unicode', // Default to Unicode for backward compatibility
 }
 
 export class QuickEmojiSettingTab extends PluginSettingTab {
@@ -48,6 +51,26 @@ export class QuickEmojiSettingTab extends PluginSettingTab {
 					.onChange(async (value) => {
 						const skin = parseInt(value)
 						this.plugin.settings.skin = skin as SkinSetting
+						await this.plugin.saveSettings()
+					})
+			})
+
+		// Insertion format setting
+		new Setting(containerEl)
+			.setName('Insertion format')
+			.setDesc(
+				'Choose how emojis are inserted into your notes:\n' +
+					'• Unicode emoji: Insert as native characters (🙂) - visible in all views\n' +
+					'• Shortcode: Insert as text codes (:smile:) - rendered in Reading Mode'
+			)
+			.addDropdown((dropdown) => {
+				dropdown
+					.addOption('unicode', 'Unicode emoji')
+					.addOption('shortcode', 'Shortcode')
+					.setValue(this.plugin.settings.insertionFormat)
+					.onChange(async (value) => {
+						this.plugin.settings.insertionFormat =
+							value as InsertionFormat
 						await this.plugin.saveSettings()
 					})
 			})
@@ -115,11 +138,16 @@ export class QuickEmojiSettingTab extends PluginSettingTab {
 								title: `Insert ${emoji.name}`,
 							})
 
-							// Add click handler to insert the emoji shortcode
+							// Add click handler to insert the emoji using user's preferred format
 							emojiEl.addEventListener('click', () => {
 								const editor = getActiveEditor(this.app)
 								if (editor) {
-									editor.replaceSelection(`:${favoriteId}:`)
+									insertEmoji(
+										editor,
+										emoji,
+										this.plugin.settings.insertionFormat,
+										this.plugin.settings.skin
+									)
 								}
 							})
 						}
@@ -202,11 +230,16 @@ export class QuickEmojiSettingTab extends PluginSettingTab {
 							title: `Insert ${emoji.name}`,
 						})
 
-						// Add click handler to insert the emoji shortcode
+						// Add click handler to insert the emoji using user's preferred format
 						emojiEl.addEventListener('click', () => {
 							const editor = getActiveEditor(this.app)
 							if (editor) {
-								editor.replaceSelection(`:${emojiId}:`)
+								insertEmoji(
+									editor,
+									emoji,
+									this.plugin.settings.insertionFormat,
+									this.plugin.settings.skin
+								)
 							}
 						})
 					}

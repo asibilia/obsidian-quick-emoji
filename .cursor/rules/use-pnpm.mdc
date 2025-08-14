@@ -1,0 +1,7 @@
+---
+description: This project uses `pnpm`
+globs:
+alwaysApply: false
+---
+
+This project uses `pnpm`, please use this instead of normal `npm` commands.
