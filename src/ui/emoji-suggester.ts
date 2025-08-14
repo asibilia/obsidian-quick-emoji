@@ -11,7 +11,7 @@ import { type Emoji } from '@emoji-mart/data'
 
 import type QuickEmojiPlugin from '../main'
 import { getSearchIndex } from '../services/emoji-service'
-import { getActiveEditor, getEmojiWithSkin } from '../utils'
+import { getActiveEditor, getEmojiWithSkin, insertEmoji } from '../utils'
 
 // Emoji category definitions
 const EMOJI_CATEGORIES = [
@@ -31,21 +31,6 @@ const EMOJI_CATEGORIES = [
 
 // Regex for checking trailing whitespace (extracted to avoid recompilation)
 const TRAILING_WHITESPACE_REGEX = /\s$/
-
-/**
- * Sanitize a string to be a valid emoji shortcode
- * @param str - The string to sanitize
- * @returns A valid shortcode string
- */
-function sanitizeShortcode(str: string): string {
-	return (str || '')
-		.trim()
-		.toLowerCase()
-		.replace(/[^a-z0-9_+-]/g, '_') // Replace non-allowed characters with underscore
-		.replace(/_{2,}/g, '_') // Collapse multiple underscores to single
-		.replace(/^_+|_+$/g, '') // Trim leading/trailing underscores
-		.slice(0, 50) // Limit length to prevent overly long shortcodes
-}
 
 type EmojiSuggestion = {
 	emoji: Emoji
@@ -456,21 +441,16 @@ export class EmojiSuggester extends EditorSuggest<EmojiSuggestion> {
 
 		const { emoji } = suggestion
 
-		// Always insert shortcode format
-		// Prefer emoji.id if present; fall back to name. Sanitize for valid shortcode format.
-		const shortcode = emoji.id
-			? sanitizeShortcode(emoji.id)
-			: sanitizeShortcode(emoji.name)
-		const textToInsert = shortcode ? `:${shortcode}:` : ':emoji:' // Final fallback
-
 		// Always save in recents when selecting an emoji
 		this.plugin.saveRecentEmoji(emoji)
 
-		// Replace the text in the editor
-		editor.replaceRange(
-			textToInsert,
-			this.context!.start,
-			this.context!.end
+		// Use the centralized insertion helper with user's preferred format
+		insertEmoji(
+			editor,
+			emoji,
+			this.plugin.settings.insertionFormat,
+			this.plugin.settings.skin,
+			this.context!
 		)
 	}
 }

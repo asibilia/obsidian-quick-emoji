@@ -1,0 +1,11 @@
+# Task ID: 1
+# Title: Update Settings Schema and Default Configuration
+# Status: pending
+# Dependencies: None
+# Priority: high
+# Description: Modify the QuickEmojiSettings interface to include the new insertionFormat property and update the DEFAULT_SETTINGS object to establish 'unicode' as the default value for backward compatibility.
+# Details:
+In the relevant TypeScript file (e.g., `src/main.ts` or a dedicated types file), update the `QuickEmojiSettings` interface to add `insertionFormat: 'unicode' | 'shortcode'`. Then, modify the `DEFAULT_SETTINGS` constant to include `insertionFormat: 'unicode'`. This ensures that existing users who upgrade will default to the original Unicode insertion behavior, preventing unexpected changes to their workflow.
+
+# Test Strategy:
+Perform a static type check using the TypeScript compiler (e.g., `tsc`) to ensure no type errors are introduced. Manually review the git diff to confirm the interface and default object are correctly updated as specified.

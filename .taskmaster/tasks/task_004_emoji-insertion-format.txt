@@ -1,0 +1,11 @@
+# Task ID: 4
+# Title: Create Centralized Emoji Insertion Helper
+# Status: pending
+# Dependencies: 2
+# Priority: medium
+# Description: Create a centralized helper function to handle the actual insertion of emojis into the editor, which will simplify logic and prevent code duplication.
+# Details:
+In a utility file (e.g., `src/util.ts`), create an exported function like `export function insertEmoji(editor: Editor, emoji: any, format: 'unicode' | 'shortcode')`. The `emoji` parameter will be the object from the emoji library (e.g., emoji-mart), which typically has properties like `emoji.native` for the Unicode character and `emoji.id` for the shortcode name. The function will determine the string to insert: `const textToInsert = format === 'unicode' ? emoji.native : ":${emoji.id}:";`. Finally, it will use `editor.replaceSelection(textToInsert);` to place the text in the note.
+
+# Test Strategy:
+If the project has a testing framework, write unit tests for this helper function. Pass it a mock editor object and different format values ('unicode', 'shortcode') and assert that the `replaceSelection` method is called with the expected string ('🙂' vs. ':smile:').

@@ -512,5 +512,122 @@
       "updated": "2025-08-13T17:26:35.295Z",
       "description": "Tasks for master context"
     }
+  },
+  "emoji-insertion-format": {
+    "tasks": [
+      {
+        "id": 1,
+        "title": "Update Settings Schema and Default Configuration",
+        "description": "Modify the QuickEmojiSettings interface to include the new insertionFormat property and update the DEFAULT_SETTINGS object to establish 'unicode' as the default value for backward compatibility.",
+        "details": "In the relevant TypeScript file (e.g., `src/main.ts` or a dedicated types file), update the `QuickEmojiSettings` interface to add `insertionFormat: 'unicode' | 'shortcode'`. Then, modify the `DEFAULT_SETTINGS` constant to include `insertionFormat: 'unicode'`. This ensures that existing users who upgrade will default to the original Unicode insertion behavior, preventing unexpected changes to their workflow.\n<info added on 2025-08-14T11:38:40.567Z>\nThe QuickEmojiSettings interface was updated to include the `insertionFormat` property, using a new `InsertionFormat` type alias ('unicode' | 'shortcode') for better code organization. The DEFAULT_SETTINGS object was updated to include `insertionFormat: 'unicode'` for backward compatibility. The changes passed TypeScript checks without any errors.\n</info added on 2025-08-14T11:38:40.567Z>",
+        "testStrategy": "Perform a static type check using the TypeScript compiler (e.g., `tsc`) to ensure no type errors are introduced. Manually review the git diff to confirm the interface and default object are correctly updated as specified.",
+        "priority": "high",
+        "dependencies": [],
+        "status": "done",
+        "subtasks": []
+      },
+      {
+        "id": 2,
+        "title": "Ensure Setting Persistence and Migration",
+        "description": "Implement the necessary logic to correctly load the new `insertionFormat` setting for all users and persist their choice across Obsidian sessions.",
+        "details": "In `src/main.ts`, review the `loadSettings()` method. The standard implementation `this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());` should suffice. This pattern correctly handles migration for existing users by merging their saved settings (which lack the new key) with the `DEFAULT_SETTINGS` object, thereby applying the 'unicode' default. The `saveSettings()` method should already handle saving the entire settings object, which will now include the new property.\n<info added on 2025-08-14T11:53:43.094Z>\nVerification completed. The existing `loadSettings()` method, which uses `Object.assign({}, DEFAULT_SETTINGS, await this.loadData())`, is confirmed to be correct for migration purposes. It properly provides the `insertionFormat: 'unicode'` default for both new and existing users. The `saveSettings()` method also works as expected, saving the complete settings object including the new property. No additional code is needed. The project builds successfully.\n</info added on 2025-08-14T11:53:43.094Z>",
+        "testStrategy": "1. Test with a fresh install (no settings file) and verify the format defaults to 'unicode'. 2. Test with a pre-existing settings file (without the `insertionFormat` key) and verify the setting defaults to 'unicode' on plugin load. 3. Change the setting, reload the plugin, and confirm the chosen setting is correctly loaded.",
+        "priority": "high",
+        "dependencies": [
+          1
+        ],
+        "status": "done",
+        "subtasks": []
+      },
+      {
+        "id": 3,
+        "title": "Add Insertion Format Dropdown to Settings UI",
+        "description": "Add a new dropdown menu to the plugin's settings tab, allowing users to select their preferred emoji insertion format.",
+        "details": "In `src/ui/settings-tab.ts`, within the `display()` method, use the Obsidian API's `Setting` class. Position the new setting logically, for instance, after the skin tone setting. Use `new Setting(containerEl).setName('Insertion format').setDesc('Choose how emojis are inserted...').addDropdown(dropdown => { dropdown.addOption('unicode', 'Unicode emoji').addOption('shortcode', 'Shortcode').setValue(this.plugin.settings.insertionFormat).onChange(async (value) => { this.plugin.settings.insertionFormat = value; await this.plugin.saveSettings(); }); });` Ensure the descriptive text from the PRD is included.\n<info added on 2025-08-14T12:08:14.070Z>\nTask completed successfully. The insertion format dropdown was added to the settings UI, positioned after the skin tone setting. The dropdown includes 'unicode' (Unicode emoji) and 'shortcode' (Shortcode) options. A clear descriptive text explains the difference between the formats, with examples like (🙂) for Unicode and (:smile:) for shortcode, and clarifies visibility differences in all views versus Reading Mode. The implementation uses proper TypeScript typing with an `InsertionFormat` type cast. The `onChange` handler saves the setting immediately, and the project builds successfully.\n</info added on 2025-08-14T12:08:14.070Z>",
+        "testStrategy": "Open the plugin settings in Obsidian. Verify the 'Insertion format' dropdown appears with the correct label, descriptive text, and options. Change the selection and verify it's saved by closing and reopening the settings tab. Check that the value is correctly updated in the `data.json` file.",
+        "priority": "high",
+        "dependencies": [
+          1,
+          2
+        ],
+        "status": "done",
+        "subtasks": []
+      },
+      {
+        "id": 4,
+        "title": "Create Centralized Emoji Insertion Helper",
+        "description": "Create a centralized helper function to handle the actual insertion of emojis into the editor, which will simplify logic and prevent code duplication.",
+        "details": "In a utility file (e.g., `src/util.ts`), create an exported function like `export function insertEmoji(editor: Editor, emoji: any, format: 'unicode' | 'shortcode')`. The `emoji` parameter will be the object from the emoji library (e.g., emoji-mart), which typically has properties like `emoji.native` for the Unicode character and `emoji.id` for the shortcode name. The function will determine the string to insert: `const textToInsert = format === 'unicode' ? emoji.native : \":${emoji.id}:\";`. Finally, it will use `editor.replaceSelection(textToInsert);` to place the text in the note.\n<info added on 2025-08-14T12:21:20.073Z>\nTask completed. The centralized emoji insertion helper was created in `src/utils/index.ts`.\n\nImplementation Details:\n- The `insertEmoji()` function handles both unicode and shortcode formats.\n- A `sanitizeShortcode()` helper function was also created, moved from the emoji-suggester.\n- The function supports both suggester context (replaceRange) and simple insertion (replaceSelection).\n- Unicode format uses `getEmojiWithSkin()` for proper skin tone support.\n- Shortcode format uses proper sanitization and fallback logic.\n- The function signature was updated to include parameters for skinTone and an optional context for range replacement.\n\nFinal Function Signature:\n`export function insertEmoji(editor: Editor, emoji: Emoji, format: InsertionFormat, skinTone: SkinSetting, context?: { start: EditorPosition; end: EditorPosition }): void`\n</info added on 2025-08-14T12:21:20.073Z>",
+        "testStrategy": "If the project has a testing framework, write unit tests for this helper function. Pass it a mock editor object and different format values ('unicode', 'shortcode') and assert that the `replaceSelection` method is called with the expected string ('🙂' vs. ':smile:').",
+        "priority": "medium",
+        "dependencies": [
+          2
+        ],
+        "status": "done",
+        "subtasks": []
+      },
+      {
+        "id": 5,
+        "title": "Integrate Insertion Helper into Emoji Suggester",
+        "description": "Update the Emoji Suggester component to use the new centralized insertion helper, ensuring it respects the user's format choice.",
+        "details": "In `src/ui/emoji-suggester.ts`, locate the `selectSuggestion(value: any, evt: MouseEvent | KeyboardEvent)` method. Replace the existing insertion logic with a call to the new helper function: `insertEmoji(this.editor, value.emoji, this.plugin.settings.insertionFormat);`. Ensure any logic for handling skin tones is applied to the `value.emoji` object *before* it is passed to the helper.",
+        "testStrategy": "1. Set format to 'Unicode' in settings. Trigger the suggester (e.g., type `:smile`) and select an emoji. Verify the native Unicode character is inserted. 2. Switch format to 'Shortcode'. Repeat the process and verify the text shortcode is inserted. 3. Test with an emoji that supports skin tones to ensure they are applied correctly in both modes.",
+        "priority": "high",
+        "dependencies": [
+          3,
+          4
+        ],
+        "status": "done",
+        "subtasks": []
+      },
+      {
+        "id": 6,
+        "title": "Update Recent Emojis to Use Insertion Helper",
+        "description": "Modify the click handlers for the 'Recent Emojis' list in the settings tab to use the centralized insertion helper for consistent behavior.",
+        "details": "In `src/ui/settings-tab.ts`, find the code that generates the list of recent emojis and attaches click handlers. In the `onClick` callback for each emoji element, call the centralized `insertEmoji()` helper. You will need to get a reference to the active editor, which can be done via `this.app.workspace.activeEditor?.editor`, and pass it along with the emoji object and the setting `this.plugin.settings.insertionFormat`.\n<info added on 2025-08-14T12:30:49.780Z>\nTask completed successfully. Updated recent emoji click handlers to use centralized insertion helper.\n\nImplementation Details:\n- Added `insertEmoji` import to settings-tab.ts\n- Updated click handler in `renderRecentEmojis()` method\n- Replaced hardcoded shortcode insertion with centralized helper call\n- Now respects user's insertion format preference and skin tone settings\n- Uses the full emoji object (already available in scope) instead of just emojiId\n\nKey Changes:\n// OLD: Hardcoded shortcode insertion\nemojiEl.addEventListener('click', () => {\n    const editor = getActiveEditor(this.app)\n    if (editor) {\n        editor.replaceSelection(`:${emojiId}:`)\n    }\n})\n\n// NEW: Centralized helper respecting user preferences\nemojiEl.addEventListener('click', () => {\n    const editor = getActiveEditor(this.app)\n    if (editor) {\n        insertEmoji(\n            editor,\n            emoji,\n            this.plugin.settings.insertionFormat,\n            this.plugin.settings.skin\n        )\n    }\n})\n\nBuild Verification: Project builds successfully\nIntegration Quality: Consistent behavior with main suggester functionality\n</info added on 2025-08-14T12:30:49.780Z>",
+        "testStrategy": "1. Set format to 'Unicode'. Open settings, click a recent emoji, and verify the native character is inserted into the currently active note. 2. Switch format to 'Shortcode'. Repeat the test and verify the shortcode is inserted instead.",
+        "priority": "medium",
+        "dependencies": [
+          3,
+          4
+        ],
+        "status": "done",
+        "subtasks": []
+      },
+      {
+        "id": 7,
+        "title": "Update Favorite Emojis to Use Insertion Helper",
+        "description": "Modify the click handlers for the 'Favorite Emojis' list in the settings tab to use the centralized insertion helper.",
+        "details": "Similar to the 'Recent Emojis' task, locate the logic for 'Favorite Emojis' in `src/ui/settings-tab.ts`. Update the `onClick` handler to call the `insertEmoji()` helper function, passing the active editor instance, the favorite emoji object, and the current `insertionFormat` setting from `this.plugin.settings`.\n<info added on 2025-08-14T12:35:49.064Z>\nTask completed successfully. The favorite emoji logic in the `renderFavoriteEmojis()` method was updated. The click handler now uses the centralized `insertEmoji` helper instead of hardcoded shortcode insertion. This change ensures that inserting a favorite emoji respects the user's configured insertion format and skin tone settings by using the full emoji object available in scope.\n</info added on 2025-08-14T12:35:49.064Z>",
+        "testStrategy": "1. Add an emoji to favorites. 2. Set format to 'Unicode'. In settings, click the favorite emoji and verify the native character is inserted into the active note. 3. Switch format to 'Shortcode'. Repeat the test and verify the shortcode is inserted.",
+        "priority": "medium",
+        "dependencies": [
+          3,
+          4
+        ],
+        "status": "done",
+        "subtasks": []
+      },
+      {
+        "id": 8,
+        "title": "Update Plugin Documentation",
+        "description": "Update the plugin's README.md file and any other user-facing documentation to describe the new 'Insertion Format' setting, its options, and behavior.",
+        "details": "Edit the `README.md` file to include a new section under 'Settings' or 'Features'. Clearly explain the 'Insertion Format' option, detailing the difference between 'Unicode emoji' and 'Shortcode' as described in the PRD. Including a screenshot of the new setting in the UI is highly recommended to improve clarity.\n<info added on 2025-08-14T12:39:23.447Z>\nThe plugin documentation has been updated to reflect the new insertion format feature. Key changes include: updating the 'Features' section to highlight 'Flexible Insertion Format'; revising the 'How It Works' and 'Usage' sections to explain both Unicode and Shortcode options; and adding a detailed comparison of the two formats with pros and cons. The 'Settings' section now clearly describes the 'Insertion Format' option. The documentation maintains clear, user-friendly language with concrete examples for both formats and explains viewing differences across Obsidian modes. All markdown linting issues have been resolved.\n</info added on 2025-08-14T12:39:23.447Z>",
+        "testStrategy": "Review the rendered `README.md` on GitHub or locally. Check for clarity, accuracy, and completeness. Ensure the description matches the final implementation and that any screenshots are up-to-date.",
+        "priority": "low",
+        "dependencies": [
+          5,
+          6,
+          7
+        ],
+        "status": "done",
+        "subtasks": []
+      }
+    ],
+    "metadata": {
+      "created": "2025-08-14T11:29:41.091Z",
+      "updated": "2025-08-14T12:39:29.066Z",
+      "description": "Tasks for emoji-insertion-format context"
+    }
   }
 }

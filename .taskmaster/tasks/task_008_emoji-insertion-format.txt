@@ -1,0 +1,11 @@
+# Task ID: 8
+# Title: Update Plugin Documentation
+# Status: pending
+# Dependencies: 5, 6, 7
+# Priority: low
+# Description: Update the plugin's README.md file and any other user-facing documentation to describe the new 'Insertion Format' setting, its options, and behavior.
+# Details:
+Edit the `README.md` file to include a new section under 'Settings' or 'Features'. Clearly explain the 'Insertion Format' option, detailing the difference between 'Unicode emoji' and 'Shortcode' as described in the PRD. Including a screenshot of the new setting in the UI is highly recommended to improve clarity.
+
+# Test Strategy:
+Review the rendered `README.md` on GitHub or locally. Check for clarity, accuracy, and completeness. Ensure the description matches the final implementation and that any screenshots are up-to-date.

@@ -1,0 +1,11 @@
+# Task ID: 7
+# Title: Update Favorite Emojis to Use Insertion Helper
+# Status: pending
+# Dependencies: 3, 4
+# Priority: medium
+# Description: Modify the click handlers for the 'Favorite Emojis' list in the settings tab to use the centralized insertion helper.
+# Details:
+Similar to the 'Recent Emojis' task, locate the logic for 'Favorite Emojis' in `src/ui/settings-tab.ts`. Update the `onClick` handler to call the `insertEmoji()` helper function, passing the active editor instance, the favorite emoji object, and the current `insertionFormat` setting from `this.plugin.settings`.
+
+# Test Strategy:
+1. Add an emoji to favorites. 2. Set format to 'Unicode'. In settings, click the favorite emoji and verify the native character is inserted into the active note. 3. Switch format to 'Shortcode'. Repeat the test and verify the shortcode is inserted.

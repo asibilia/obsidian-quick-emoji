@@ -1,0 +1,11 @@
+# Task ID: 3
+# Title: Add Insertion Format Dropdown to Settings UI
+# Status: pending
+# Dependencies: 1, 2
+# Priority: high
+# Description: Add a new dropdown menu to the plugin's settings tab, allowing users to select their preferred emoji insertion format.
+# Details:
+In `src/ui/settings-tab.ts`, within the `display()` method, use the Obsidian API's `Setting` class. Position the new setting logically, for instance, after the skin tone setting. Use `new Setting(containerEl).setName('Insertion format').setDesc('Choose how emojis are inserted...').addDropdown(dropdown => { dropdown.addOption('unicode', 'Unicode emoji').addOption('shortcode', 'Shortcode').setValue(this.plugin.settings.insertionFormat).onChange(async (value) => { this.plugin.settings.insertionFormat = value; await this.plugin.saveSettings(); }); });` Ensure the descriptive text from the PRD is included.
+
+# Test Strategy:
+Open the plugin settings in Obsidian. Verify the 'Insertion format' dropdown appears with the correct label, descriptive text, and options. Change the selection and verify it's saved by closing and reopening the settings tab. Check that the value is correctly updated in the `data.json` file.

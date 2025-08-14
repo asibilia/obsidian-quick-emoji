@@ -1,0 +1,11 @@
+# Task ID: 5
+# Title: Integrate Insertion Helper into Emoji Suggester
+# Status: pending
+# Dependencies: 3, 4
+# Priority: high
+# Description: Update the Emoji Suggester component to use the new centralized insertion helper, ensuring it respects the user's format choice.
+# Details:
+In `src/ui/emoji-suggester.ts`, locate the `selectSuggestion(value: any, evt: MouseEvent | KeyboardEvent)` method. Replace the existing insertion logic with a call to the new helper function: `insertEmoji(this.editor, value.emoji, this.plugin.settings.insertionFormat);`. Ensure any logic for handling skin tones is applied to the `value.emoji` object *before* it is passed to the helper.
+
+# Test Strategy:
+1. Set format to 'Unicode' in settings. Trigger the suggester (e.g., type `:smile`) and select an emoji. Verify the native Unicode character is inserted. 2. Switch format to 'Shortcode'. Repeat the process and verify the text shortcode is inserted. 3. Test with an emoji that supports skin tones to ensure they are applied correctly in both modes.
